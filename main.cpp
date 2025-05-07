@@ -1171,7 +1171,7 @@ int main()
 						fish.fishLevel = 2.f;
 						gameWin = 0;
 						fish.fishSize = 1.f;
-						currentProgress = 25000.0f;
+						currentProgress = 0.0f;
 						lives = 3;
 						score = 0;
 						multiple = 1; // const in score .
