@@ -1171,7 +1171,7 @@ int main()
 						fish.fishLevel = 2.f;
 						gameWin = 0;
 						fish.fishSize = 1.f;
-						currentProgress = 0.0f;
+						currentProgress = 0.f;
 						lives = 3;
 						score = 0;
 						multiple = 1; // const in score .
@@ -1529,8 +1529,11 @@ void update(Event event, Vector2f mousePos, GameState& state, PauseMenu& pauseMe
 	if (state == GameState::Paused && event.type == Event::MouseButtonPressed)
 	{
 
-		if (pauseMenu.option(mousePos))
+		if (pauseMenu.option(mousePos)) {
 			state = GameState::options;
+			mainMenuOpen = 0;
+
+		}
 
 		if (pauseMenu.isResumeClicked(mousePos))
 		{
@@ -1552,6 +1555,8 @@ void update(Event event, Vector2f mousePos, GameState& state, PauseMenu& pauseMe
 				backToMenuTimerStarted = true;
 				gameWin = 0;
 			}
+			mainMenuOpen = 0;
+
 		}
 		if (pauseMenu.isQuitClicked(mousePos))
 		{
@@ -1562,13 +1567,14 @@ void update(Event event, Vector2f mousePos, GameState& state, PauseMenu& pauseMe
 				CurrentSound.play();
 				CurrentSound.setLoop(true);
 			}
-			state = GameState::levels;
+			state = GameState::Playing;
+			mainMenuOpen = 1;
 			gameStartClicked = 0;
 			initializeMapping();
 			backToMenuClock.restart();
 			backToMenuTimerStarted = true;
 		}
-		mainMenuOpen = 0;
+		//mainMenuOpen = 0;
 	}
 	if (state == GameState::options && event.type == Event::MouseButtonPressed)
 	{
