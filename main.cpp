@@ -1,4 +1,4 @@
-﻿#include <SFML/Graphics.hpp>
+#include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
 #include <iostream>
 #include <algorithm>
@@ -1555,7 +1555,18 @@ void update(Event event, Vector2f mousePos, GameState& state, PauseMenu& pauseMe
 		}
 		if (pauseMenu.isQuitClicked(mousePos))
 		{
-			window.close();
+			//window.close();
+			if (option.bubblepressed[1])
+			{
+				CurrentSound = menuSound;
+				CurrentSound.play();
+				CurrentSound.setLoop(true);
+			}
+			state = GameState::levels;
+			gameStartClicked = 0;
+			initializeMapping();
+			backToMenuClock.restart();
+			backToMenuTimerStarted = true;
 		}
 		mainMenuOpen = 0;
 	}
