@@ -4,17 +4,18 @@ using namespace std;
 using namespace sf;
 
 /*
-  bubblepressed[0]-----> sound
-  bubblepressed[1]-----> music
-  bubblepressed[2]-----> fullscreen
-  bubblepressed[3]-----> helpbubbles
-  bubblepressed[4]-----> slow speed
-  bubblepressed[5]-----> duble slow speed
-  bubblepressed[6]-----> mid fast speed
-  bubblepressed[7]-----> fast speed
+	bubblepressed[0]-----> sound
+	bubblepressed[1]-----> music
+	bubblepressed[2]-----> fullscreen
+	bubblepressed[3]-----> helpbubbles
+	bubblepressed[4]-----> slow speed
+	bubblepressed[5]-----> duble slow speed
+	bubblepressed[6]-----> mid fast speed
+	bubblepressed[7]-----> fast speed
 */
 
-options::options(RenderWindow& window) {
+options::options(RenderWindow &window)
+{
 
 	const int width = window.getSize().x;
 	const int height = window.getSize().y;
@@ -47,53 +48,22 @@ options::options(RenderWindow& window) {
 	fishFerenzy.setPosition(width / 2, height * 1.5 / 7);
 	fishFerenzy.setScale(2, 2);
 
-	bubb1[0].loadFromFile("./assets/babble_2.png");
-	Bubb1[0].setTexture(bubb1[0]);
-	Bubb1[0].setOrigin(Bubb1[0].getGlobalBounds().width / 2, Bubb1[0].getGlobalBounds().height / 2);
-	Bubb1[0].setPosition(width / 1.8, height * 2.4 / 7);
-	Bubb1[0].setScale(1.5, 1.5);
-
-	bubb1[1].loadFromFile("./assets/babble_2.png");
-	Bubb1[1].setTexture(bubb1[1]);
-	Bubb1[1].setOrigin(Bubb1[1].getGlobalBounds().width / 2, Bubb1[1].getGlobalBounds().height / 2);
-	Bubb1[1].setPosition(width / 1.8, height * 2.4 / 7 + 73);
-	Bubb1[1].setScale(1.5, 1.5);
-
-	bubb1[2].loadFromFile("./assets/babble_2.png");
-	Bubb1[2].setTexture(bubb1[2]);
-	Bubb1[2].setOrigin(Bubb1[2].getGlobalBounds().width / 2, Bubb1[2].getGlobalBounds().height / 2);
-	Bubb1[2].setPosition(width / 1.8, height * 2.4 / 7 + 2 * 73);
-	Bubb1[2].setScale(1.5, 1.5);
-
-	bubb1[3].loadFromFile("./assets/babble_2.png");
-	Bubb1[3].setTexture(bubb1[3]);
-	Bubb1[3].setOrigin(Bubb1[3].getGlobalBounds().width / 2, Bubb1[3].getGlobalBounds().height / 2);
-	Bubb1[3].setPosition(width / 1.8, height * 2.4 / 7 + 3 * 73);
-	Bubb1[3].setScale(1.5, 1.5);
-
-	bubb1[4].loadFromFile("./assets/babble_1.png");
-	Bubb1[4].setTexture(bubb1[4]);
-	Bubb1[4].setOrigin(Bubb1[4].getGlobalBounds().width / 2, Bubb1[4].getGlobalBounds().height / 2);
-	Bubb1[4].setPosition(width / 1.8, height * 2.4 / 7 + 4 * 73);
-	Bubb1[4].setScale(1.5, 1.5);
-
-	bubb1[5].loadFromFile("./assets/babble_1.png");
-	Bubb1[5].setTexture(bubb1[5]);
-	Bubb1[5].setOrigin(Bubb1[5].getGlobalBounds().width / 2, Bubb1[5].getGlobalBounds().height / 2);
-	Bubb1[5].setPosition(width / 1.8 + 50, height * 2.4 / 7 + 4 * 73);
-	Bubb1[5].setScale(1.5, 1.5);
-
-	bubb1[6].loadFromFile("./assets/babble_2.png");
-	Bubb1[6].setTexture(bubb1[6]);
-	Bubb1[6].setOrigin(Bubb1[6].getGlobalBounds().width / 2, Bubb1[6].getGlobalBounds().height / 2);
-	Bubb1[6].setPosition(width / 1.8 + 100, height * 2.4 / 7 + 4 * 73);
-	Bubb1[6].setScale(1.5, 1.5);
-
-	bubb1[7].loadFromFile("./assets/babble_1.png");
-	Bubb1[7].setTexture(bubb1[7]);
-	Bubb1[7].setOrigin(Bubb1[7].getGlobalBounds().width / 2, Bubb1[7].getGlobalBounds().height / 2);
-	Bubb1[7].setPosition(width / 1.8 + 150, height * 2.4 / 7 + 4 * 73);
-	Bubb1[7].setScale(1.5, 1.5);
+	for (int i = 0; i < 8; i++)
+	{
+		bubb1[i].loadFromFile("./assets/babble_2.png");
+		Bubb1[i].setTexture(bubb1[i]);
+		Bubb1[i].setOrigin(Bubb1[i].getGlobalBounds().width / 2, Bubb1[i].getGlobalBounds().height / 2);
+		Bubb1[i].setPosition(width / 1.8, height * 2.4 / 7 + i * 73);
+		Bubb1[i].setScale(1.5, 1.5);
+		if (i >= 4)
+		{
+			Bubb1[i].setPosition(width / 1.8 + 50 * (i - 4), height * 2.4 / 7 + 4 * 73);
+			if (i == 4 || i == 5 || i == 7)
+			{
+				bubb1[i].loadFromFile("./assets/babble_1.png");
+			}
+		}
+	}
 
 	slow.setFont(font2);
 	slow.setString("slow");
@@ -116,7 +86,6 @@ options::options(RenderWindow& window) {
 	done.setOrigin(done.getGlobalBounds().width / 2, done.getLocalBounds().height / 2);
 	done.setPosition(width / 2, height * 5.25 / 7);
 	done.setScale(1, 1);
-
 
 	sound.setFont(font2);
 	sound.setString("Sound");
@@ -159,24 +128,31 @@ options::options(RenderWindow& window) {
 	mousespeed.setScale(1, 1);
 }
 
-void options::update(Vector2f mousePos, RenderWindow& window, Event event) {
+void options::update(Vector2f mousePos, RenderWindow &window, Event event)
+{
 
 	const int width = window.getSize().x;
 	const int height = window.getSize().y;
 
 	bool hover = Bubb1[1].getGlobalBounds().contains(mousePos);
-	if (cersor.getGlobalBounds().contains(mousePos)) {
+	if (cersor.getGlobalBounds().contains(mousePos))
+	{
 		window.draw(cersor3);
 		window.draw(done);
 	}
 
-	if (event.type == Event::MouseButtonPressed) {
-		for (int i = 0;i < 8;i++) {
-			if (Bubb1[i].getGlobalBounds().contains(mousePos)) {
-				if (bubblepressed[i] == 0) {
+	if (event.type == Event::MouseButtonPressed)
+	{
+		for (int i = 0; i < 8; i++)
+		{
+			if (Bubb1[i].getGlobalBounds().contains(mousePos))
+			{
+				if (bubblepressed[i] == 0)
+				{
 					bubb1[i].loadFromFile("./assets/babble_2.png");
 					bubblepressed[i] = 1;
-					if (i == 4) {
+					if (i == 4)
+					{
 						bubb1[5].loadFromFile("./assets/babble_1.png");
 						bubb1[6].loadFromFile("./assets/babble_1.png");
 						bubb1[7].loadFromFile("./assets/babble_1.png");
@@ -184,7 +160,8 @@ void options::update(Vector2f mousePos, RenderWindow& window, Event event) {
 						bubblepressed[6] = 0;
 						bubblepressed[7] = 0;
 					}
-					if (i == 5) {
+					if (i == 5)
+					{
 						bubb1[4].loadFromFile("./assets/babble_1.png");
 						bubb1[6].loadFromFile("./assets/babble_1.png");
 						bubb1[7].loadFromFile("./assets/babble_1.png");
@@ -192,7 +169,8 @@ void options::update(Vector2f mousePos, RenderWindow& window, Event event) {
 						bubblepressed[6] = 0;
 						bubblepressed[7] = 0;
 					}
-					if (i == 6) {
+					if (i == 6)
+					{
 						bubb1[4].loadFromFile("./assets/babble_1.png");
 						bubb1[5].loadFromFile("./assets/babble_1.png");
 						bubb1[7].loadFromFile("./assets/babble_1.png");
@@ -200,7 +178,8 @@ void options::update(Vector2f mousePos, RenderWindow& window, Event event) {
 						bubblepressed[5] = 0;
 						bubblepressed[7] = 0;
 					}
-					if (i == 7) {
+					if (i == 7)
+					{
 						bubb1[4].loadFromFile("./assets/babble_1.png");
 						bubb1[5].loadFromFile("./assets/babble_1.png");
 						bubb1[6].loadFromFile("./assets/babble_1.png");
@@ -209,7 +188,8 @@ void options::update(Vector2f mousePos, RenderWindow& window, Event event) {
 						bubblepressed[6] = 0;
 					}
 				}
-				else if (bubblepressed[i] == 1) {
+				else if (bubblepressed[i] == 1)
+				{
 					bubb1[i].loadFromFile("./assets/babble_1.png");
 					bubblepressed[i] = 0;
 				}
@@ -218,12 +198,14 @@ void options::update(Vector2f mousePos, RenderWindow& window, Event event) {
 	}
 }
 
-void options::render(RenderWindow& window) {
+void options::render(RenderWindow &window)
+{
 	window.draw(Optionsbackg);
 	window.draw(cersor);
 	window.draw(done);
 	window.draw(fishFerenzy);
-	for (int i = 0;i < 8;i++) {
+	for (int i = 0; i < 8; i++)
+	{
 		window.draw(Bubb1[i]);
 	}
 	window.draw(slow);
@@ -235,6 +217,7 @@ void options::render(RenderWindow& window) {
 	window.draw(mousespeed);
 }
 
-bool options::doneClicked(Vector2f mousePos) {
+bool options::doneClicked(Vector2f mousePos)
+{
 	return cersor.getGlobalBounds().contains(mousePos);
 }
