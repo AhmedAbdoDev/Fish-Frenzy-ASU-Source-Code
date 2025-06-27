@@ -1,7 +1,8 @@
-#include <SFML/Graphics.hpp>
+﻿#include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
 #include <iostream>
 #include <algorithm>
+#include <string>
 #include <fstream>
 #include "Fish.h"
 #include "Hud.h"
@@ -10,7 +11,6 @@
 #include "options.h"
 using namespace std;
 using namespace sf;
-
 // Create a window
 // VideoMode(1500, 1000)
 // VideoMode(1920, 1080)
@@ -24,12 +24,19 @@ int score = 0, lives = 1, multiple = 1;
 float levelMax = 50000.0f, currentProgress = 0.f;
 int fisheaten = 0;
 int level = 4, currentLevel = 4;
-bool arrOFlevels[4] = {0};
+bool arrOFlevels[4] = { 0 };
 bool gameWin = 0, winIn = 1, alreadywon = 0, esacpedFish = 0;
 Image icon;
+
+string playerName = "";
+float cursorBlinkTime = 0.f;
+bool cursorVisible = true;
+
+
 enum class GameState
 {
 	Playing,
+	NameEntry,
 	Paused,
 	Gameover,
 	options,
@@ -54,7 +61,7 @@ struct MainFish
 	bool settled = false, swimming = false, eating = false, idle = true, turning = false, pendingFlip = false, eated = false;
 	// Timers
 	float dashTimer = 0.f, dashDuration = 0.3f, turnElapsed = 0.f, turnSwitch = 0.08f, idleFrameTimer = 0.0f, swimFrameTimer = 0.0f,
-				eatFrameTimer = 0.0f, idleSwitch = 0.2f, swimSwitch = 0.07f, eatSwitch = 0.1f;
+		eatFrameTimer = 0.0f, idleSwitch = 0.2f, swimSwitch = 0.07f, eatSwitch = 0.1f;
 
 	// Animation
 	int frame = 0;
@@ -82,15 +89,15 @@ Text levelTexts[4];
 Vector2f levelsImageSize;
 
 // nada
-void cameraUpdate(const FloatRect &backgroundBounds, const FloatRect &deadZone);
+void cameraUpdate(const FloatRect& backgroundBounds, const FloatRect& deadZone);
 void startImmunity();
-bool checkCollision(const Sprite &a, const Sprite &b);
-void checkAndEatFishCollision(Fish &fish1, Fish &fish2);
-void checkAndEatPlayerFish(Fish &otherFish, Hud &hud, GameState &state, bool bubblepressed[]);
+bool checkCollision(const Sprite& a, const Sprite& b);
+void checkAndEatFishCollision(Fish& fish1, Fish& fish2);
+void checkAndEatPlayerFish(Fish& otherFish, Hud& hud, GameState& state, bool bubblepressed[]);
 
 // alaa mahmoud
-void update(Event event, Vector2f mousePos, GameState &state, PauseMenu &pauseMenu,
-						GameOver &gameover, options &option, bool &backToMenuTimerStarted);
+void update(Event event, Vector2f mousePos, GameState& state, PauseMenu& pauseMenu,
+	GameOver& gameover, options& option, bool& backToMenuTimerStarted);
 
 // alaa ashraf
 SoundBuffer menuBuffer, gameOverBuffer, bite1Buffer, bite2Buffer, bite3Buffer, mermaidBuffer, playerDieBuffer, playerSpawnBuffer, stageIntroBuffer, gameplayBuffer, mineExplosionBuffer;
@@ -116,7 +123,7 @@ struct StarBubble
 		type = bubbleType;
 	}
 
-	void spawn(const Texture &texture, const Vector2u &windowSize)
+	void spawn(const Texture& texture, const Vector2u& windowSize)
 	{
 		sprite.setTexture(texture);
 		sprite.setTextureRect(IntRect(0, 0, type == BubbleType::Multiple ? 36 : 40, type == BubbleType::Multiple ? 36 : 40));
@@ -138,13 +145,13 @@ struct StarBubble
 		}
 	}
 
-	void draw(RenderWindow &window)
+	void draw(RenderWindow& window)
 	{
 		if (isActive)
 			window.draw(sprite);
 	}
 
-	void checkCollision(MainFish &fish, int &score, int &multiple, int &lives, bool bubblepressed[])
+	void checkCollision(MainFish& fish, int& score, int& multiple, int& lives, bool bubblepressed[])
 	{
 		if (!isActive)
 			return;
@@ -180,8 +187,8 @@ struct Mermaid
 	static const int columns = 10;
 	static const int rows = 2;
 };
-void initMermaid(Mermaid &mermaid, const RenderWindow &window);
-void updateMermaid(Mermaid &mermaid, float deltaTime, const RenderWindow &window);
+void initMermaid(Mermaid& mermaid, const RenderWindow& window);
+void updateMermaid(Mermaid& mermaid, float deltaTime, const RenderWindow& window);
 struct Oyster
 {
 	Sprite sprite;
@@ -199,9 +206,9 @@ struct Oyster
 	int blackOrWhite;
 };
 Texture oysterTexture;
-void initOyster(Oyster &oyster, float x, float y);
-bool checkOysterCollision(const Oyster &oyster, const Sprite &fishSprite);
-void checkPearlCollision(Oyster &oyster, MainFish &fish, int &score, bool bubblepressed[]);
+void initOyster(Oyster& oyster, float x, float y);
+bool checkOysterCollision(const Oyster& oyster, const Sprite& fishSprite);
+void checkPearlCollision(Oyster& oyster, MainFish& fish, int& score, bool bubblepressed[]);
 const int oysterCount = 2;
 Oyster oysters[oysterCount];
 
@@ -213,7 +220,7 @@ struct Button
 	Texture normalTexture;
 	Texture hoverTexture;
 
-	void updateTexture(const Vector2f &mousePos)
+	void updateTexture(const Vector2f& mousePos)
 	{
 		sprite.setTexture(sprite.getGlobalBounds().contains(mousePos) ? hoverTexture : normalTexture);
 	}
@@ -229,28 +236,32 @@ struct Button
 	}
 };
 
-Button newGameBtn, optionsBtn, highScoresBtn, exitBtn, doneButton;
+Button newGameBtn, optionsBtn, highScoresBtn, exitBtn, doneButton, exitName;
 
 // Textures
 Texture mainMenuBGTexture, gameTitleTexture, optionsFrameTexture, creditsBarTexture;
 // Sprites
 Sprite mainMenuBGSprite, gameTitleSprite, optionsFrameSprite, creditsBarSprite;
 Font gameFont;
-long long highScores[11] = {};
+struct PlayerScore {
+	string name;
+	int score;
+};
+PlayerScore highScores[11] = {};
 int scoreCount = 0;
 fstream highScoresFile;
-string CreditsNames[7] = {"Abdrahman Ezzat", "Adham Elnomairy Ahmed", "Ahmed Abd El-Latif Mostafa", "Alaa Ashraf", "Alaa Mahmoud Ibrahem", "Mona Saber Abdullah", "Nada Mohamed Fekry"};
+string CreditsNames[7] = { "Abdrahman Ezzat", "Adham Elnomairy Ahmed", "Ahmed Abd El-Latif Mostafa", "Alaa Ashraf", "Alaa Mahmoud Ibrahem", "Mona Saber Abdullah", "Nada Mohamed Fekry" };
 // Flags
 bool gameStartClicked = false, highScoresClicked = false, mainMenuOpen = true, creditsClicked = false;
 // Function Declarations
 void loadMainMenuSprites();
-void fitScale(Sprite &, const RenderWindow &);
-void drawScores(RenderWindow &);
+void fitScale(Sprite&, const RenderWindow&);
+void drawScores(RenderWindow&);
 void saveScore(int);
 void loadScores();
-void drawDone(RenderWindow &);
-void drawCreditsTitle(RenderWindow &);
-void drawOurCredits(RenderWindow &);
+void drawDone(RenderWindow&);
+void drawCreditsTitle(RenderWindow&);
+void drawOurCredits(RenderWindow&);
 Clock backToMenuClock;
 bool backToMenuTimerStarted = true;
 
@@ -259,7 +270,7 @@ int readCurrentLevel();
 void saveNewLevel(int newLevel);
 void initializeMapping();
 Texture backgr;
-void initializeBackground(Sprite &background, int currentLevel);
+void initializeBackground(Sprite& background, int currentLevel);
 struct Boom
 {
 	Texture boomTexture, boomAnimation;
@@ -361,7 +372,7 @@ struct Boom
 		sprite.setTextureRect(IntRect(1, 1, imageSize.x - 1, imageSize.y - 3));
 	}
 
-	bool checkCollision(const Sprite &target, GameState &state, bool bubblepressed[])
+	bool checkCollision(const Sprite& target, GameState& state, bool bubblepressed[])
 	{
 		if (visible && !playing && !finished && sprite.getGlobalBounds().intersects(target.getGlobalBounds()) && !fish.isImmune && !gameWin)
 		{
@@ -397,7 +408,7 @@ struct Boom
 		}
 		return false;
 	}
-	bool checkfishes(Fish &target, GameState &state, bool bubblepressed[])
+	bool checkfishes(Fish& target, GameState& state, bool bubblepressed[])
 	{
 		if (visible && !playing && !finished && sprite.getGlobalBounds().intersects(target.sprite.getGlobalBounds()) && target.Eated_frame == 0 && target.isinBackground())
 		{
@@ -408,7 +419,7 @@ struct Boom
 		return false;
 	}
 
-	void draw(RenderWindow &window)
+	void draw(RenderWindow& window)
 	{
 		if (visible)
 		{
@@ -452,8 +463,8 @@ int main()
 	// alaa ashraf
 	Texture bubbleTextures[3];
 	if (!bubbleTextures[0].loadFromFile("assets/star_bubble.png") ||
-			!bubbleTextures[1].loadFromFile("assets/multiple_bubble.png") ||
-			!bubbleTextures[2].loadFromFile("assets/fish_bubble.png"))
+		!bubbleTextures[1].loadFromFile("assets/multiple_bubble.png") ||
+		!bubbleTextures[2].loadFromFile("assets/fish_bubble.png"))
 	{
 		cerr << "Failed to load bubble textures.\n";
 		return 1;
@@ -474,7 +485,7 @@ int main()
 	{
 		initMermaid(mermaid, window);
 	}
-	catch (const exception &e)
+	catch (const exception& e)
 	{
 		cerr << e.what() << endl;
 		return -1;
@@ -493,7 +504,7 @@ int main()
 		float x = spacing * (i * 3 + 0.5) - (115 * 1.3f / 2);
 		initOyster(oysters[i], x, oysterY);
 	}
-	GameState state = GameState::Playing;
+	GameState state = GameState::NameEntry;
 
 	if (icon.loadFromFile("./assets/icon.png"))
 		window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
@@ -509,10 +520,10 @@ int main()
 	FloatRect backgroundBounds = background.getGlobalBounds();
 	// Define the dead zone (inner rectangle)
 	FloatRect deadZone(
-			window.getSize().x / 4,
-			window.getSize().y / 4,
-			window.getSize().x / 2,
-			window.getSize().y / 2);
+		window.getSize().x / 4,
+		window.getSize().y / 4,
+		window.getSize().x / 2,
+		window.getSize().y / 2);
 
 	// Create the camera
 	camera = window.getDefaultView();
@@ -531,6 +542,7 @@ int main()
 	// make player/objects move at a fixed pace on all pcs types
 	Clock clock;
 
+
 	while (window.isOpen())
 	{
 		// Calculate delta time
@@ -540,11 +552,15 @@ int main()
 		// handle events
 		Event event;
 		Vector2f mousePos = window.mapPixelToCoords(Mouse::getPosition(window));
-
+		exitName = exitBtn;
+		FloatRect exitBtnBounds = exitName.sprite.getLocalBounds();
+		exitName.sprite.setOrigin(exitBtnBounds.left + exitBtnBounds.width / 2.f, exitBtnBounds.top + exitBtnBounds.height / 2.f);
+		exitName.setPosition(window.getSize().x / 2.f, exitName.sprite.getPosition().y);
 		newGameBtn.updateTexture(mousePos);
 		optionsBtn.updateTexture(mousePos);
 		highScoresBtn.updateTexture(mousePos);
 		exitBtn.updateTexture(mousePos);
+		exitName.updateTexture(mousePos);
 		doneButton.updateTexture(mousePos);
 		if (!option.bubblepressed[1])
 		{
@@ -565,9 +581,9 @@ int main()
 			isFullscreen = option.bubblepressed[2];
 			window.close();
 			window.create(
-					isFullscreen ? VideoMode::getDesktopMode() : VideoMode(1920, 1080),
-					"Fish Frenzy!",
-					isFullscreen ? Style::Fullscreen : Style::Default);
+				isFullscreen ? VideoMode::getDesktopMode() : VideoMode(1920, 1080),
+				"Fish Frenzy!",
+				isFullscreen ? Style::Fullscreen : Style::Default);
 			window.setFramerateLimit(60);
 		}
 		while (window.pollEvent(event))
@@ -575,8 +591,7 @@ int main()
 			if (event.type == Event::Closed)
 				window.close();
 			update(event, mousePos, state, pauseMenu, gameover, option, backToMenuTimerStarted);
-
-			if (mainMenuOpen && event.type == Event::MouseButtonPressed && event.mouseButton.button == Mouse::Left && state == GameState::Playing)
+			if (mainMenuOpen && event.type == Event::MouseButtonPressed && event.mouseButton.button == Mouse::Left && (state == GameState::Playing || state == GameState::NameEntry))
 			{
 				if (newGameBtn.sprite.getGlobalBounds().contains(mousePos))
 				{
@@ -601,11 +616,16 @@ int main()
 					cout << "Credits clicked\n";
 					creditsClicked = true;
 				}
-				else if (exitBtn.sprite.getGlobalBounds().contains(mousePos) && mainMenuOpen && state == GameState::Playing && backToMenuClock.getElapsedTime().asSeconds() >= 1.0f && backToMenuTimerStarted)
+				else if (
+					exitBtn.sprite.getGlobalBounds().contains(mousePos) && mainMenuOpen && state == GameState::Playing && backToMenuClock.getElapsedTime().asSeconds() >= 1.0f && backToMenuTimerStarted
+					|| (exitName.sprite.getGlobalBounds().contains(mousePos) && mainMenuOpen && state == GameState::NameEntry)
+					)
 				{
 					cout << "Game Closed, Bye Bye\n";
 					window.close();
 				}
+
+
 				mainMenuOpen = !(gameStartClicked || highScoresClicked || creditsClicked || state == GameState::levels);
 			}
 			if (event.type == Event::MouseButtonPressed && event.mouseButton.button == Mouse::Left && state == GameState::levels)
@@ -663,6 +683,9 @@ int main()
 				state = GameState::Playing;
 				mainMenuOpen = 1;
 			}
+
+			if (state == GameState::options)
+				option.update(mousePos, window, event);
 			for (int i = 0; i < 4; i++)
 			{
 				if (levelPearls[i].getGlobalBounds().contains(mousePos))
@@ -670,6 +693,18 @@ int main()
 
 				else
 					levelPearls[i].setTextureRect(IntRect(0 * levelsImageSize.x, (arrOFlevels[i] ? 1 : 0) * levelsImageSize.y, levelsImageSize.x, levelsImageSize.y + 1));
+			}
+
+			if (event.type == Event::TextEntered) {
+				if (event.text.unicode == '\b' && !playerName.empty()) {
+					playerName.pop_back();
+				}
+				else if (event.text.unicode < 128 && isprint(event.text.unicode) && playerName.size() < 12) {
+					playerName += char(event.text.unicode);
+				}
+			}
+			if (event.type == Event::KeyPressed && event.key.code == Keyboard::Enter && !playerName.empty()) {
+				state = GameState::Playing;
 			}
 		}
 		if (currentProgress >= levelMax && !gameWin && gameStartClicked && winIn)
@@ -738,7 +773,7 @@ int main()
 			{
 				if (!alreadywon)
 				{
-					for (auto &oyster : oysters)
+					for (auto& oyster : oysters)
 					{
 						oyster.timer -= deltaTime;
 						if (oyster.timer <= 0)
@@ -795,7 +830,7 @@ int main()
 						checkPearlCollision(oyster, fish, score, option.bubblepressed);
 					}
 				}
-				for (auto &oyster : oysters)
+				for (auto& oyster : oysters)
 				{
 					window.draw(oyster.sprite);
 					if (oyster.isOpen && oyster.hasPowerUp)
@@ -925,9 +960,37 @@ int main()
 		}
 
 		mousePos = window.mapPixelToCoords(Mouse::getPosition(window));
+		if (state == GameState::NameEntry) {
+			window.setView(window.getDefaultView());
+			Text nameText;
+			nameText.setFont(font);
+			if (playerName.size())
+			{
+				cursorBlinkTime += deltaTime;
+				if (cursorBlinkTime >= 0.5f)
+				{
+					cursorVisible = !cursorVisible;
+					cursorBlinkTime = 0.f;
+				}
+			}
+			else
+			{
+				cursorVisible = false;
+				cursorBlinkTime = 0.f;
+			}
+			nameText.setString("Player: " + (playerName.size() ? playerName + (cursorVisible ? "|" : "") : "Type Your Name"));
+			nameText.setCharacterSize(50);
+			nameText.setFillColor(Color::White);
+			FloatRect textBounds = nameText.getLocalBounds();
+			Vector2u windowSize = window.getSize();
+			nameText.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
+			nameText.setPosition(windowSize.x / 2.f, windowSize.y / 2.f);
+			window.draw(nameText);
+			window.draw(exitName.sprite);
+		}
 		if (state == GameState::levels)
 		{
-			window.setView(window.getDefaultView()); // Reset to screen view
+			window.setView(window.getDefaultView());
 			window.draw(mainMenuBGSprite);
 			for (int i = 0; i < 4; i++)
 			{
@@ -938,15 +1001,15 @@ int main()
 		}
 		if (state == GameState::Paused)
 		{
-			window.setView(window.getDefaultView()); // Reset to screen view
+			window.setView(window.getDefaultView());
 			window.draw(mainMenuBGSprite);
-			pauseMenu.render(window, score, highScores[0], fisheaten); // Draw pause menu
+			pauseMenu.render(window, score, highScores[0].score, fisheaten);
 			pauseMenu.update(mousePos, window);
 		}
 		if (state == GameState::Gameover)
 		{
-			window.setView(window.getDefaultView()); // Reset to screen view
-			gameover.render(window, score);					 // Draw pause menu
+			window.setView(window.getDefaultView());
+			gameover.render(window, score);
 			gameover.update(mousePos, window);
 		}
 		if (state == GameState::options)
@@ -955,9 +1018,9 @@ int main()
 			creditsClicked = false;
 			highScoresClicked = false;
 			window.draw(mainMenuBGSprite);
-			window.setView(window.getDefaultView()); // Reset to screen view
+			window.setView(window.getDefaultView());
 			option.render(window);
-			option.update(mousePos, window, event);
+			option.hover(mousePos, window);
 		}
 		window.display();
 	}
@@ -1018,7 +1081,7 @@ void initializeMapping()
 		levelTexts[i].setPosition(centerPos);
 	}
 }
-void initializeBackground(Sprite &background, int currentLevel)
+void initializeBackground(Sprite& background, int currentLevel)
 {
 	if (currentLevel < 3)
 		backgr.loadFromFile("./assets/ground1.png");
@@ -1031,7 +1094,7 @@ void initializeBackground(Sprite &background, int currentLevel)
 }
 
 // Abdrahman Ezzat
-void fitScale(Sprite &sprite, const RenderWindow &window)
+void fitScale(Sprite& sprite, const RenderWindow& window)
 {
 	const Vector2u textureSize = sprite.getTexture()->getSize();
 	const Vector2u windowSize = window.getSize();
@@ -1045,48 +1108,48 @@ void loadMainMenuSprites()
 {
 	if (!gameFont.loadFromFile("./assets/fonts/BigSpace-rPKx.ttf"))
 		cerr << "Error loading main menu font!\n"
-				 << endl;
+		<< endl;
 
 	if (!mainMenuBGTexture.loadFromFile("./assets/mainMenuBG.png"))
 		cerr << "Error loading main menu background!\n"
-				 << endl;
+		<< endl;
 
 	if (!optionsFrameTexture.loadFromFile("./assets/optionsFrame.png"))
 		cerr << "Error loading options frame!\n"
-				 << endl;
+		<< endl;
 
 	if (!gameTitleTexture.loadFromFile("./assets/fish_ferenzy.png"))
 		cerr << "Error loading game title!\n"
-				 << endl;
+		<< endl;
 
 	if (!creditsBarTexture.loadFromFile("./assets/cersor_3.png"))
 		cerr << "Error loading credits bar!\n"
-				 << endl;
+		<< endl;
 
 	if (!newGameBtn.normalTexture.loadFromFile("./assets/newGame_normal.png") ||
-			!newGameBtn.hoverTexture.loadFromFile("./assets/newGame_hover.png"))
+		!newGameBtn.hoverTexture.loadFromFile("./assets/newGame_hover.png"))
 		cerr << "Error loading new game button textures!\n"
-				 << endl;
+		<< endl;
 
 	if (!optionsBtn.normalTexture.loadFromFile("./assets/options_normal.png") ||
-			!optionsBtn.hoverTexture.loadFromFile("./assets/options_hover.png"))
+		!optionsBtn.hoverTexture.loadFromFile("./assets/options_hover.png"))
 		cerr << "Error loading options button textures!\n"
-				 << endl;
+		<< endl;
 
 	if (!highScoresBtn.normalTexture.loadFromFile("./assets/highScores_normal.png") ||
-			!highScoresBtn.hoverTexture.loadFromFile("./assets/highScores_hover.png"))
+		!highScoresBtn.hoverTexture.loadFromFile("./assets/highScores_hover.png"))
 		cerr << "Error loading high scores button textures!\n"
-				 << endl;
+		<< endl;
 
 	if (!exitBtn.normalTexture.loadFromFile("./assets/exit_normal.png") ||
-			!exitBtn.hoverTexture.loadFromFile("./assets/exit_hover.png"))
+		!exitBtn.hoverTexture.loadFromFile("./assets/exit_hover.png"))
 		cerr << "Error loading exit button textures!\n"
-				 << endl;
+		<< endl;
 
 	if (!doneButton.normalTexture.loadFromFile("./assets/cersor_1.png") ||
-			!doneButton.hoverTexture.loadFromFile("./assets/cersor_2.png"))
+		!doneButton.hoverTexture.loadFromFile("./assets/cersor_2.png"))
 		cerr << "Error loading done button textures!\n"
-				 << endl;
+		<< endl;
 
 	// Background
 	mainMenuBGSprite.setTexture(mainMenuBGTexture);
@@ -1134,22 +1197,25 @@ void loadScores()
 
 	if (highScoresFile.is_open())
 	{
-		vector<long long> tempScores;
+		vector<PlayerScore> tempScores;
 		long long temp;
-		while (highScoresFile >> temp)
+		string name;
+		int score;
+		while (highScoresFile >> name >> score)
 		{
-			if (temp > 0)
-				tempScores.push_back(temp);
+			if (score > 0)
+				tempScores.push_back({ name, score });
+
 		}
 		highScoresFile.close();
 
 		// Sort descending
-		sort(tempScores.begin(), tempScores.end(), greater<long long>());
-
+		sort(tempScores.begin(), tempScores.end(), [](const PlayerScore& a, const PlayerScore& b) {
+			return a.score > b.score;
+			});
 		// Copy top 10
-		scoreCount = min(10, int(tempScores.size()));
-		for (int i = 0; i < scoreCount; ++i)
-		{
+		scoreCount = min(10, (int)tempScores.size());
+		for (int i = 0; i < scoreCount; ++i) {
 			highScores[i] = tempScores[i];
 		}
 	}
@@ -1158,10 +1224,12 @@ void saveScore(int newScore)
 {
 	loadScores();
 
-	highScores[scoreCount] = newScore;
+	highScores[scoreCount] = { playerName, newScore };
 	scoreCount++;
 
-	sort(highScores, highScores + scoreCount, greater<long long>());
+	sort(highScores, highScores + scoreCount, [](const PlayerScore& a, const PlayerScore& b) {
+		return a.score > b.score;
+		});
 	scoreCount = min(scoreCount, 10);
 
 	highScoresFile.open("./assets/HighestScoresFile.txt", ios::out | ios::trunc);
@@ -1169,14 +1237,14 @@ void saveScore(int newScore)
 	{
 		for (int i = 0; i < scoreCount; ++i)
 		{
-			highScoresFile << highScores[i] << '\n';
+			highScoresFile << highScores[i].name << " " << highScores[i].score << '\n';
 		}
 		highScoresFile.close();
 	}
 	else
 		cerr << "Error opening the Highest Scores File!!" << endl;
 }
-void drawScores(RenderWindow &window)
+void drawScores(RenderWindow& window)
 {
 	Text HighScoresTitle("[ Highest Scores ]", gameFont, 90);
 	HighScoresTitle.setFillColor(Color::White);
@@ -1184,30 +1252,52 @@ void drawScores(RenderWindow &window)
 	window.draw(HighScoresTitle);
 
 	int displayCount = min(scoreCount, 10);
-	for (int i = 0; i < displayCount; ++i)
+	/*for (int i = 0; i < displayCount; ++i)
 	{
-		Text scoreText("Frenzy.\t\t" + to_string(highScores[i]), gameFont, 45);
+		Text scoreText(highScores[i].name + "\t\t" + to_string(highScores[i].score), gameFont, 45);
 		scoreText.setFillColor(Color::White);
 		scoreText.setPosition(790.f, (float)i * 40.f + 350.f);
 
 		window.draw(scoreText);
+	}*/
+	const int maxNameLength = 10;
+	const float nameX = 720.f;
+	const float scoreX = 1050.f;
+	const float baseY = 350.f;
+	const float rowHeight = 50.f;
+
+	for (int i = 0; i < displayCount; ++i)
+	{
+		string displayName = highScores[i].name;
+		if ((int)displayName.size() > maxNameLength)
+			displayName = displayName.substr(0, maxNameLength - 3) + "...";
+
+		Text nameText(to_string(i + 1) + ". " + displayName, gameFont, 45);
+		nameText.setFillColor(Color::White);
+		nameText.setPosition(nameX, baseY + i * rowHeight);
+		window.draw(nameText);
+
+		Text scoreText(to_string(highScores[i].score), gameFont, 45);
+		scoreText.setFillColor(Color::White);
+		scoreText.setPosition(scoreX, baseY + i * rowHeight);
+		window.draw(scoreText);
 	}
 }
-void drawDone(RenderWindow &window)
+void drawDone(RenderWindow& window)
 {
 	Text DoneTitle("Done", gameFont, 60);
 	DoneTitle.setFillColor(Color::Black);
 	DoneTitle.setPosition(880.f, 815.f);
 	window.draw(DoneTitle);
 }
-void drawCreditsTitle(RenderWindow &window)
+void drawCreditsTitle(RenderWindow& window)
 {
 	Text CreditsTitle("Credits", gameFont, 40);
 	CreditsTitle.setFillColor(Color::White);
 	CreditsTitle.setPosition(1718.f, 950.f);
 	window.draw(CreditsTitle);
 }
-void drawOurCredits(RenderWindow &window)
+void drawOurCredits(RenderWindow& window)
 {
 	Text OurCredits("[ Credits ]", gameFont, 90);
 	OurCredits.setFillColor(Color::White);
@@ -1325,10 +1415,10 @@ void applyBoundaries()
 
 	FloatRect bounds = fish.sprite.getGlobalBounds();
 	FloatRect viewBounds(
-			camera.getCenter().x - camera.getSize().x / 2.f,
-			camera.getCenter().y - camera.getSize().y / 2.f,
-			camera.getSize().x,
-			camera.getSize().y);
+		camera.getCenter().x - camera.getSize().x / 2.f,
+		camera.getCenter().y - camera.getSize().y / 2.f,
+		camera.getSize().x,
+		camera.getSize().y);
 	if (bounds.left < viewBounds.left)
 		fish.sprite.setPosition(viewBounds.left + bounds.width / 2.f, fish.sprite.getPosition().y);
 	if (bounds.left + bounds.width > viewBounds.left + viewBounds.width)
@@ -1371,10 +1461,10 @@ void updateAnimation(float deltaTime)
 		{
 			fish.turnElapsed = 0.f;
 			fish.sprite.setTextureRect(IntRect(
-					fish.frame * fish.imageSize.x + 2,
-					3 * fish.imageSize.y + 1,
-					fish.imageSize.x - 2,
-					fish.imageSize.y - 1));
+				fish.frame * fish.imageSize.x + 2,
+				3 * fish.imageSize.y + 1,
+				fish.imageSize.x - 2,
+				fish.imageSize.y - 1));
 			fish.frame++;
 			if (fish.frame >= fish.maxframes)
 			{
@@ -1437,7 +1527,7 @@ void updateMainFish(float deltaTime, bool bubblepressed[])
 }
 
 // nada
-void cameraUpdate(const FloatRect &backgroundBounds, const FloatRect &deadZone)
+void cameraUpdate(const FloatRect& backgroundBounds, const FloatRect& deadZone)
 {
 	Vector2f targetPosition = fish.sprite.getPosition();
 	float targetX = camera.getCenter().x;
@@ -1466,16 +1556,23 @@ void startImmunity()
 	fish.isImmune = true;
 	fish.immunityClock.restart();
 }
-bool checkCollision(const Sprite &a, const Sprite &b)
+bool checkCollision(const Sprite& a, const Sprite& b)
 {
 	return a.getGlobalBounds().intersects(b.getGlobalBounds());
 }
-void checkAndEatFishCollision(Fish &fish1, Fish &fish2)
+bool checkFishCollision(Fish& a, Fish& b) {
+	return a.sprite.getGlobalBounds().intersects(b.getGlobalBounds());
+}
+bool checkMainFishCollision(MainFish& a, Fish& b) {
+	return a.sprite.getGlobalBounds().intersects(b.getGlobalBounds());
+}
+
+void checkAndEatFishCollision(Fish& fish1, Fish& fish2)
 {
-	if (checkCollision(fish1.sprite, fish2.sprite) && fish1.isinBackground() && fish2.isinBackground() && !gameWin)
+	if (checkFishCollision(fish1, fish2) && fish1.isinBackground() && fish2.isinBackground() && !gameWin)
 	{
 		if (int(fish1.current_type) > int(fish2.current_type) //&& fish2.Eated_frame == 0
-		)
+			)
 		{
 			if (fish1.Eating_frame == 0)
 				fish1.isEating();
@@ -1491,9 +1588,9 @@ void checkAndEatFishCollision(Fish &fish1, Fish &fish2)
 		}
 	}
 }
-void checkAndEatPlayerFish(Fish &otherFish, Hud &hud, GameState &state, bool bubblepressed[])
+void checkAndEatPlayerFish(Fish& otherFish, Hud& hud, GameState& state, bool bubblepressed[])
 {
-	if (checkCollision(fish.sprite, otherFish.sprite) && otherFish.Eated_frame == 0 && !fish.eated && fish.settled && !gameWin)
+	if (checkMainFishCollision(fish, otherFish) && otherFish.Eated_frame == 0 && !fish.eated && fish.settled && !gameWin)
 	{
 		int npcLevel = (int)(otherFish.current_type);
 
@@ -1565,8 +1662,8 @@ void checkAndEatPlayerFish(Fish &otherFish, Hud &hud, GameState &state, bool bub
 }
 
 // alaa mahmoud
-void update(Event event, Vector2f mousePos, GameState &state, PauseMenu &pauseMenu,
-						GameOver &gameover, options &option, bool &backToMenuTimerStarted)
+void update(Event event, Vector2f mousePos, GameState& state, PauseMenu& pauseMenu,
+	GameOver& gameover, options& option, bool& backToMenuTimerStarted)
 {
 	// Toggle pause menu with Escape key
 	if (event.type == Event::KeyPressed && event.key.code == Keyboard::Escape && !alreadywon && gameStartClicked)
@@ -1644,8 +1741,7 @@ void update(Event event, Vector2f mousePos, GameState &state, PauseMenu &pauseMe
 				state = GameState::Playing;
 			}
 		}
-
-		option.update(mousePos, window, event);
+		//option.update(mousePos, window, event);
 	}
 
 	if (event.type == Event::KeyPressed && event.key.code == Keyboard::P)
@@ -1721,7 +1817,7 @@ void initializeSounds()
 	mineExplosionSound.setBuffer(mineExplosionBuffer);
 }
 
-void initMermaid(Mermaid &mermaid, const RenderWindow &window)
+void initMermaid(Mermaid& mermaid, const RenderWindow& window)
 {
 	if (!mermaid.texture.loadFromFile("./assets/mermaid.png"))
 	{
@@ -1736,10 +1832,10 @@ void initMermaid(Mermaid &mermaid, const RenderWindow &window)
 	mermaid.sprite.setTextureRect(IntRect(0, 0, frameWidth, frameHeight));
 	mermaid.sprite.setScale(2.7f, 2.7f);
 	mermaid.sprite.setPosition(
-			window.getSize().x,
-			window.getSize().y / 2 - (frameHeight * 2.5f) / 2);
+		window.getSize().x,
+		window.getSize().y / 2 - (frameHeight * 2.5f) / 2);
 }
-void updateMermaid(Mermaid &mermaid, float deltaTime, const RenderWindow &window)
+void updateMermaid(Mermaid& mermaid, float deltaTime, const RenderWindow& window)
 {
 	if (!mermaid.isActive)
 		return;
@@ -1764,7 +1860,7 @@ void updateMermaid(Mermaid &mermaid, float deltaTime, const RenderWindow &window
 		mermaid.animationClock.restart();
 	}
 }
-void initOyster(Oyster &oyster, float x, float y)
+void initOyster(Oyster& oyster, float x, float y)
 {
 
 	oyster.sprite.setTexture(oysterTexture);
@@ -1786,14 +1882,14 @@ void initOyster(Oyster &oyster, float x, float y)
 	oyster.pearl.setTextureRect((oyster.blackOrWhite == 0) ? IntRect(2, 105, 45, 45) : IntRect(3, 155, 45, 45)); // white and black
 	oyster.pearl.setOrigin(oyster.pearl.getLocalBounds().width / 2, oyster.pearl.getLocalBounds().height / 2 + 4);
 	oyster.pearl.setPosition(
-			x + oyster.sprite.getGlobalBounds().width / 2,
-			y + oyster.sprite.getGlobalBounds().height * 0.7f);
+		x + oyster.sprite.getGlobalBounds().width / 2,
+		y + oyster.sprite.getGlobalBounds().height * 0.7f);
 
 	oyster.isClosing = false;
 	oyster.closingDuration = 0.5f;
 	oyster.closingTimer = 0.f;
 }
-bool checkOysterCollision(const Oyster &oyster, const Sprite &fishSprite)
+bool checkOysterCollision(const Oyster& oyster, const Sprite& fishSprite)
 {
 	if (!oyster.isOpen && checkCollision(oyster.sprite, fishSprite))
 	{
@@ -1801,7 +1897,7 @@ bool checkOysterCollision(const Oyster &oyster, const Sprite &fishSprite)
 	}
 	return false;
 }
-void checkPearlCollision(Oyster &oyster, MainFish &fish, int &score, bool bubblepressed[])
+void checkPearlCollision(Oyster& oyster, MainFish& fish, int& score, bool bubblepressed[])
 {
 	if (oyster.isOpen && oyster.hasPowerUp && checkCollision(oyster.pearl, fish.sprite))
 	{

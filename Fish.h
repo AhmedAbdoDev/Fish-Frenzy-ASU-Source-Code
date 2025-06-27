@@ -51,7 +51,6 @@ public:
 	sf::Sprite sprite;
 
 	int8_t Eated_frame = 0, Eating_frame = 0;
-
 	//determine the type of the fish 
 	enum class type {
 		MINNOW = 2,
@@ -99,5 +98,6 @@ public:
 	void isEscaping();
 	void isEated();
 	bool isinBackground();
+	sf::FloatRect getGlobalBounds();
 
 };

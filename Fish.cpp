@@ -374,3 +374,13 @@ bool Fish::isinBackground() {
 	return (sprite.getPosition().x < work_area.x - 100 && sprite.getPosition().x > 0 &&
 		sprite.getPosition().y < work_area.y && sprite.getPosition().y > 0);
 }
+sf::FloatRect Fish::getGlobalBounds() {
+	if (current_type == Fish::type::MINNOW)
+		return sprite.getGlobalBounds();
+	sf::FloatRect globalBounds = sprite.getGlobalBounds();
+	globalBounds.left += globalBounds.left / 12;
+	globalBounds.top += globalBounds.top / 12;
+	globalBounds.height -= globalBounds.height / 3;
+	globalBounds.width -= globalBounds.width / 3;
+	return globalBounds;
+}
