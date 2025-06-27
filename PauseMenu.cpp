@@ -3,8 +3,8 @@
 using namespace std;
 using namespace sf;
 
-
-PauseMenu::PauseMenu(RenderWindow& window) {
+PauseMenu::PauseMenu(RenderWindow &window)
+{
 
 	/*const int width = window.getSize().x;
 	const int height = window.getSize().y;*/
@@ -12,7 +12,6 @@ PauseMenu::PauseMenu(RenderWindow& window) {
 	const int height = window.getSize().y;
 	font.loadFromFile("./assets/fonts/BigSpace-rPKx.ttf");
 	font2.loadFromFile("./assets/fonts/Roboto-Bold.ttf");
-
 
 	puase.loadFromFile("./assets/optionsFrame.png");
 	Puase.setTexture(puase);
@@ -96,32 +95,35 @@ PauseMenu::PauseMenu(RenderWindow& window) {
 	options.setOrigin(continu.getGlobalBounds().width / 2, continu.getGlobalBounds().height / 2);
 	options.setPosition(width / 2.8, height * 5.45 / 7);
 	options.setScale(.7, .7);
-
 }
 
-void PauseMenu::update(Vector2f mousePos, RenderWindow& window) {
+void PauseMenu::update(Vector2f mousePos, RenderWindow &window)
+{
 
-	if (cersor.getGlobalBounds().contains(mousePos)) {
+	if (cersor.getGlobalBounds().contains(mousePos))
+	{
 		cersor_.loadFromFile("./assets/cersor_2.png");
 	}
 	else
 		cersor_.loadFromFile("./assets/cersor_1.png");
 
-	if (cersor2.getGlobalBounds().contains(mousePos)) {
+	if (cersor2.getGlobalBounds().contains(mousePos))
+	{
 		end.setFillColor(Color(200, 200, 250));
 	}
 	else
 		end.setFillColor(Color(240, 250, 250));
 
-	if (cersor4.getGlobalBounds().contains(mousePos)) {
+	if (cersor4.getGlobalBounds().contains(mousePos))
+	{
 		options.setFillColor(Color(200, 200, 250));
-
 	}
 	else
 		options.setFillColor(Color(240, 250, 250));
 }
 
-void PauseMenu::render(RenderWindow& window, int scorenum, int highscorenum, int fisheat) {
+void PauseMenu::render(RenderWindow &window, int scorenum, int highscorenum, int fisheat)
+{
 	score.setString("Your score : " + to_string(scorenum));
 	highscore.setString("High Score : " + to_string(highscorenum));
 	fisheaten.setString("Fish Eaten : " + to_string(fisheat));
@@ -138,14 +140,17 @@ void PauseMenu::render(RenderWindow& window, int scorenum, int highscorenum, int
 	window.draw(highscore);
 	window.draw(standard);
 }
-bool PauseMenu::isResumeClicked(Vector2f mousePos) {
+bool PauseMenu::isResumeClicked(Vector2f mousePos)
+{
 	return cersor.getGlobalBounds().contains(mousePos);
 }
 
-bool PauseMenu::isQuitClicked(Vector2f mousePos) {
+bool PauseMenu::isQuitClicked(Vector2f mousePos)
+{
 	return cersor2.getGlobalBounds().contains(mousePos);
 }
 
-bool PauseMenu::option(Vector2f mousePos) {
+bool PauseMenu::option(Vector2f mousePos)
+{
 	return cersor4.getGlobalBounds().contains(mousePos);
 }

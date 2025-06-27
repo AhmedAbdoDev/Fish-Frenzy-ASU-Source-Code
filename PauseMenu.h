@@ -7,7 +7,8 @@
 using namespace std;
 using namespace sf;
 
-class PauseMenu {
+class PauseMenu
+{
 public:
 	PauseMenu(RenderWindow& window);
 
@@ -18,7 +19,6 @@ public:
 	bool isResumeClicked(Vector2f mousePos);
 	bool isQuitClicked(Vector2f mousePos);
 	bool option(Vector2f mousePos);
-
 
 	Text continu;
 	Text end;
@@ -31,14 +31,16 @@ public:
 	Sprite cersor2;
 	Sprite cersor4;
 	Sprite fishFerenzy;
+
+	Text score;
+	Text highscore;
+	Text fisheaten;
 private:
 	Font font;
 	Font font2;
 
 	Text standard;
-	Text score;
-	Text highscore;
-	Text fisheaten;
+
 
 	Texture puase;
 	Texture cersor2_;

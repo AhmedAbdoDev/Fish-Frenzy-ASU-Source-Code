@@ -1,4 +1,4 @@
-#include "options.h"
+﻿#include "options.h"
 
 using namespace std;
 using namespace sf;
@@ -14,9 +14,10 @@ using namespace sf;
 	bubblepressed[7]-----> fast speed
 */
 
-options::options(RenderWindow &window)
+options::options(RenderWindow& window)
 {
-
+	babble_on.loadFromFile("./assets/babble_2.png");
+	babble_off.loadFromFile("./assets/babble_1.png");
 	const int width = window.getSize().x;
 	const int height = window.getSize().y;
 
@@ -50,8 +51,8 @@ options::options(RenderWindow &window)
 
 	for (int i = 0; i < 8; i++)
 	{
-		bubb1[i].loadFromFile("./assets/babble_2.png");
-		Bubb1[i].setTexture(bubb1[i]);
+		Bubb1[i].setTexture(babble_on);
+
 		Bubb1[i].setOrigin(Bubb1[i].getGlobalBounds().width / 2, Bubb1[i].getGlobalBounds().height / 2);
 		Bubb1[i].setPosition(width / 1.8, height * 2.4 / 7 + i * 73);
 		Bubb1[i].setScale(1.5, 1.5);
@@ -59,9 +60,7 @@ options::options(RenderWindow &window)
 		{
 			Bubb1[i].setPosition(width / 1.8 + 50 * (i - 4), height * 2.4 / 7 + 4 * 73);
 			if (i == 4 || i == 5 || i == 7)
-			{
-				bubb1[i].loadFromFile("./assets/babble_1.png");
-			}
+				Bubb1[i].setTexture(babble_off);
 		}
 	}
 
@@ -128,77 +127,38 @@ options::options(RenderWindow &window)
 	mousespeed.setScale(1, 1);
 }
 
-void options::update(Vector2f mousePos, RenderWindow &window, Event event)
+
+
+void options::update(Vector2f mousePos, RenderWindow& window, Event event)
 {
-
-	const int width = window.getSize().x;
-	const int height = window.getSize().y;
-
+	if (event.type == Event::MouseButtonPressed && event.mouseButton.button == Mouse::Left)
+		for (int i = 0; i < 8; i++)
+			if (Bubb1[i].getGlobalBounds().contains(mousePos))
+				if (i >= 4 && i <= 7)
+				{
+					for (int j = 4; j <= 7; ++j)
+					{
+						bubblepressed[j] = (j == i);
+						Bubb1[j].setTexture(bubblepressed[j] ? babble_on : babble_off);
+					}
+				}
+				else
+				{
+					bubblepressed[i] = !bubblepressed[i];
+					Bubb1[i].setTexture(bubblepressed[i] ? babble_on : babble_off);
+				}
+}
+void options::hover(Vector2f mousePos, RenderWindow& window)
+{
 	bool hover = Bubb1[1].getGlobalBounds().contains(mousePos);
 	if (cersor.getGlobalBounds().contains(mousePos))
 	{
 		window.draw(cersor3);
 		window.draw(done);
 	}
-
-	if (event.type == Event::MouseButtonPressed)
-	{
-		for (int i = 0; i < 8; i++)
-		{
-			if (Bubb1[i].getGlobalBounds().contains(mousePos))
-			{
-				if (bubblepressed[i] == 0)
-				{
-					bubb1[i].loadFromFile("./assets/babble_2.png");
-					bubblepressed[i] = 1;
-					if (i == 4)
-					{
-						bubb1[5].loadFromFile("./assets/babble_1.png");
-						bubb1[6].loadFromFile("./assets/babble_1.png");
-						bubb1[7].loadFromFile("./assets/babble_1.png");
-						bubblepressed[5] = 0;
-						bubblepressed[6] = 0;
-						bubblepressed[7] = 0;
-					}
-					if (i == 5)
-					{
-						bubb1[4].loadFromFile("./assets/babble_1.png");
-						bubb1[6].loadFromFile("./assets/babble_1.png");
-						bubb1[7].loadFromFile("./assets/babble_1.png");
-						bubblepressed[4] = 0;
-						bubblepressed[6] = 0;
-						bubblepressed[7] = 0;
-					}
-					if (i == 6)
-					{
-						bubb1[4].loadFromFile("./assets/babble_1.png");
-						bubb1[5].loadFromFile("./assets/babble_1.png");
-						bubb1[7].loadFromFile("./assets/babble_1.png");
-						bubblepressed[4] = 0;
-						bubblepressed[5] = 0;
-						bubblepressed[7] = 0;
-					}
-					if (i == 7)
-					{
-						bubb1[4].loadFromFile("./assets/babble_1.png");
-						bubb1[5].loadFromFile("./assets/babble_1.png");
-						bubb1[6].loadFromFile("./assets/babble_1.png");
-						bubblepressed[4] = 0;
-						bubblepressed[5] = 0;
-						bubblepressed[6] = 0;
-					}
-				}
-				else if (bubblepressed[i] == 1)
-				{
-					bubb1[i].loadFromFile("./assets/babble_1.png");
-					bubblepressed[i] = 0;
-				}
-			}
-		}
-	}
 }
 
-void options::render(RenderWindow &window)
+void options::render(RenderWindow& window)
 {
 	window.draw(Optionsbackg);
 	window.draw(cersor);

@@ -9,16 +9,18 @@
 using namespace std;
 using namespace sf;
 
-class options {
+class options
+{
 public:
 	options(RenderWindow& window);
 
 	void update(Vector2f mousePos, RenderWindow& window, Event event);
+	void hover(Vector2f mousePos, RenderWindow& window);
 
 	void render(RenderWindow& window);
 
 	bool doneClicked(Vector2f mousePos);
-	bool bubblepressed[8] = { 1,1,1,1,0,0,1,0 };
+	bool bubblepressed[8] = { 1, 1, 1, 1, 0, 0, 1, 0 };
 
 private:
 	Font font;
@@ -38,7 +40,8 @@ private:
 	Texture cersor_;
 	Texture cersor3_;
 	Texture fishferenzy;
-	Texture bubb1[8];
+	Texture babble_on;
+	Texture babble_off;
 
 	Sprite Optionsbackg;
 	Sprite cersor;
@@ -48,5 +51,3 @@ private:
 };
 
 #endif
-
-
