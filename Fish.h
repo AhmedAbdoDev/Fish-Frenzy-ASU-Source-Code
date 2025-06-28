@@ -8,7 +8,7 @@ private:
 	float angle = 0;
 	// textures of fish
 	sf::Texture fish_texture;
-
+	sf::Sprite* Background;
 	bool isOutscreen = 1;
 	// the speed that fish moves
 	uint8_t speed = 65.0f;
@@ -28,8 +28,7 @@ private:
 	//the are dimensions that AI fish will swim in
 	sf::Vector2f work_area;
 
-	//freeze factor to controll the fish to move or no
-	int8_t freeze = 1;
+
 
 	//fish floating rectangle
 	float fish_widthSize = 0, fish_heightSize = 0;
@@ -51,6 +50,7 @@ public:
 	sf::Sprite sprite;
 
 	int8_t Eated_frame = 0, Eating_frame = 0;
+
 	//determine the type of the fish 
 	enum class type {
 		MINNOW = 2,
@@ -64,7 +64,7 @@ public:
 	Fish::type current_type = type::MINNOW;
 
 
-	void  init(Fish::type type, sf::Texture background);
+	void  init(Fish::type type, sf::Texture background, sf::Sprite& background_sprite);
 
 	// ===== [SECTION 3: GAMEPLAY METHODS] =====
 		/*
