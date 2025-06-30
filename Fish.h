@@ -48,6 +48,7 @@ private:
 	// ===== [SECTION 2: making fish creature] ===== 
 public:
 	sf::Sprite sprite;
+	sf::RectangleShape mouth;
 
 	int8_t Eated_frame = 0, Eating_frame = 0;
 
@@ -64,7 +65,7 @@ public:
 	Fish::type current_type = type::MINNOW;
 
 
-	void  init(Fish::type type, sf::Texture background, sf::Sprite& background_sprite);
+	void  init(Fish::type type, sf::Texture& background, sf::Sprite& background_sprite);
 
 	// ===== [SECTION 3: GAMEPLAY METHODS] =====
 		/*

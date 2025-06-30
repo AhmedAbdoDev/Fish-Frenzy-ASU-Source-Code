@@ -55,11 +55,12 @@ struct MainFish
 	float scaleFactor = 1.f;
 	Clock immunityClock;
 	bool isImmune = false;
-
+	RectangleShape mouth;
 	Vector2f imageSize;
 	// Movement & Direction
 	bool facingLeft = true, dashing = false;
 	// State
+	bool isGreen = false;
 	bool settled = false, swimming = false, eating = false, idle = true, turning = false, pendingFlip = false, eated = false;
 	// Timers
 	float dashTimer = 0.f, dashDuration = 0.3f, turnElapsed = 0.f, turnSwitch = 0.08f, idleFrameTimer = 0.0f, swimFrameTimer = 0.0f,
@@ -73,6 +74,15 @@ struct MainFish
 	// Dash recharge system
 	float dashBar = 1.0f, dashRechargeRate = 0.7f;
 	bool canDash = true;
+
+	FloatRect getGlobalBounds() {
+		FloatRect globalBounds = sprite.getGlobalBounds();
+		globalBounds.left += globalBounds.left / 12;
+		globalBounds.top += globalBounds.top / 12;
+		globalBounds.height -= globalBounds.height / 3;
+		globalBounds.width -= globalBounds.width / 2;
+		return globalBounds;
+	}
 };
 
 MainFish fish;
@@ -110,7 +120,7 @@ Texture normalTextureWin, hoverTextureWin;
 string optionsSource = "main";
 
 struct FishCounter
-{ //----------------struct for counter every fish
+{
 	Sprite sprite;
 	Texture texture;
 	Text counterText;
@@ -159,31 +169,41 @@ struct StarBubble
 	bool isActive = false;
 	float speed = 150.f;
 	BubbleType type;
+	bool fallDown = false;
 
 	void init(BubbleType bubbleType)
 	{
 		type = bubbleType;
 	}
 
-	void spawn(const Texture& texture, const Vector2u& windowSize)
+	void spawn(const Texture& texture, const Vector2u& windowSize, bool dropDown = false)
 	{
 		sprite.setTexture(texture);
 		sprite.setTextureRect(IntRect(0, 0, type == BubbleType::Multiple ? 36 : 40, type == BubbleType::Multiple ? 36 : 40));
 		sprite.setScale(2.f, 2.f);
 		sprite.setPosition(rand() % (windowSize.x - 120), windowSize.y);
+		if (dropDown) sprite.setPosition(0, -100);
 		isActive = true;
+		fallDown = dropDown;
+		speed = 150.f;
 	}
 
 	void update(float deltaTime)
 	{
 		if (!isActive)
 			return;
+		float direction = fallDown ? 1.f : -1.f;
+		sprite.move(0, direction * speed * deltaTime);
 
-		sprite.move(0, -speed * deltaTime);
-
-		if (sprite.getPosition().y < -100)
+		if (fallDown)
 		{
-			isActive = false;
+			if (sprite.getPosition().y > window.getSize().y / 1.5)
+				speed = 0;
+		}
+		else
+		{
+			if (sprite.getPosition().y < -100)
+				isActive = false;
 		}
 	}
 
@@ -197,7 +217,7 @@ struct StarBubble
 	{
 		if (!isActive)
 			return;
-		if (sprite.getGlobalBounds().intersects(fish.sprite.getGlobalBounds()) && !gameWin)
+		if (sprite.getGlobalBounds().intersects(fish.sprite.getGlobalBounds()) && (!gameWin || fallDown))
 		{
 			isActive = false;
 			if (type == Star) {
@@ -218,12 +238,16 @@ struct StarBubble
 			}
 		}
 	}
-};
+}bubbles[3], mermaidBubbles[10];
+Texture bubbleTextures[3];
+
 struct Mermaid
 {
 	Sprite sprite;
 	Texture texture;
 	Clock animationClock;
+	Clock bubbleClock;
+	int spawnedBubbleCount = 0;
 	int currentFrame = 0;
 	float speed = 500.f;
 	bool isActive = true;
@@ -248,6 +272,8 @@ struct Oyster
 	bool hasPowerUp;
 	Sprite pearl;
 	int blackOrWhite;
+	RectangleShape boundaries;
+
 };
 Texture oysterTexture;
 void initOyster(Oyster& oyster, float x, float y);
@@ -439,7 +465,7 @@ struct Boom
 					if (option.bubblepressed[0])
 						CurrentSound.play();
 					camera.setCenter(camera.getCenter());
-					fish.sprite.setPosition(window.getSize().x / 2, -fish.imageSize.y);
+					fish.sprite.setPosition(camera.getCenter().x, -fish.imageSize.y);
 					fish.settled = false;
 					fish.eated = true;
 					float stageSize = levelMax / 3.f;
@@ -511,7 +537,6 @@ int main()
 	loadScores();
 
 	// alaa ashraf
-	Texture bubbleTextures[3];
 	if (!bubbleTextures[0].loadFromFile("assets/star_bubble.png") ||
 		!bubbleTextures[1].loadFromFile("assets/multiple_bubble.png") ||
 		!bubbleTextures[2].loadFromFile("assets/fish_bubble.png"))
@@ -522,7 +547,6 @@ int main()
 	Boom mine;
 	mine.initialize();
 	// Bubbles + Clock
-	StarBubble bubbles[3];
 	Clock spawnClock;
 	float bubbleSpawnDelay = 5.f;
 	for (int i = 0; i < 3; ++i)
@@ -542,7 +566,6 @@ int main()
 	}
 	if (!oysterTexture.loadFromFile("./assets/oyester_project.png"))
 	{
-		// return EXIT_FAILURE;
 	}
 	oysterTexture.setSmooth(true);
 	float totalWidth = window.getSize().x;
@@ -557,30 +580,23 @@ int main()
 
 	if (icon.loadFromFile("./assets/icon.png"))
 		window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
-	// Initialize HUD
 	Hud hud(score, lives, multiple, levelMax, currentProgress, fish.dashBar);
-	// Load HUD
 	hud.loadHUD(window);
 	initializeMainFish(1);
 
 	Sprite background;
 	initializeBackground(background, 1);
-	// Define the background bounds
 	FloatRect backgroundBounds = background.getGlobalBounds();
-	// Define the dead zone (inner rectangle)
 	FloatRect deadZone(
 		window.getSize().x / 4,
 		window.getSize().y / 4,
 		window.getSize().x / 2,
 		window.getSize().y / 2);
 
-	// Create the camera
 	camera = window.getDefaultView();
-	// camera.zoom(1.2f);
 
 	const int FISH_COUNT1 = 30, FISH_COUNT2 = 5, FISH_COUNT3 = 3;
 	Fish fishes1[FISH_COUNT1], fishes2[FISH_COUNT2], fishes3[FISH_COUNT3];
-	// Initialize AI fish at random positions
 	for (int i = 0; i < FISH_COUNT1; i++)
 		fishes1[i].init(Fish::type::MINNOW, backgr, background);
 	for (int i = 0; i < FISH_COUNT2; i++)
@@ -588,17 +604,14 @@ int main()
 	for (int i = 0; i < FISH_COUNT3; i++)
 		fishes3[i].init(Fish::type::LION_FISH, backgr, background);
 
-	// make player/objects move at a fixed pace on all pcs types
 	Clock clock;
 
 
 	while (window.isOpen())
 	{
-		// Calculate delta time
 		float deltaTime = clock.restart().asSeconds();
 		if (deltaTime > 0.6f)
 			deltaTime = 0.6f;
-		// handle events
 		Event event;
 		Vector2f mousePos = window.mapPixelToCoords(Mouse::getPosition(window));
 		exitName = exitBtn;
@@ -641,7 +654,7 @@ int main()
 				window.close();
 			update(event, mousePos, backToMenuTimerStarted);
 			if (state == GameState::win) winUpdate(mousePos, event);
-			if (mainMenuOpen && event.type == Event::MouseButtonPressed && event.mouseButton.button == Mouse::Left && (state == GameState::Playing || state == GameState::NameEntry))
+			if (mainMenuOpen && event.type == Event::MouseButtonPressed && event.mouseButton.button == Mouse::Left && (state == GameState::Playing))
 			{
 				if (newGameBtn.sprite.getGlobalBounds().contains(mousePos))
 				{
@@ -669,7 +682,6 @@ int main()
 				}
 				else if (
 					exitBtn.sprite.getGlobalBounds().contains(mousePos) && mainMenuOpen && state == GameState::Playing && backToMenuClock.getElapsedTime().asSeconds() >= 1.0f && backToMenuTimerStarted
-					|| (exitName.sprite.getGlobalBounds().contains(mousePos) && mainMenuOpen && state == GameState::NameEntry)
 					)
 				{
 					cout << "Game Closed, Bye Bye\n";
@@ -678,6 +690,10 @@ int main()
 
 
 				mainMenuOpen = !(gameStartClicked || highScoresClicked || creditsClicked || state == GameState::levels);
+			}
+			if (event.type == Event::MouseButtonPressed && event.mouseButton.button == Mouse::Left && exitName.sprite.getGlobalBounds().contains(mousePos) && mainMenuOpen && state == GameState::NameEntry) {
+				cout << "Game Closed, Bye Bye\n";
+				window.close();
 			}
 			if (event.type == Event::MouseButtonPressed && event.mouseButton.button == Mouse::Left && state == GameState::levels)
 			{
@@ -692,7 +708,8 @@ int main()
 						state = GameState::Playing;
 						gameStartClicked = true;
 						winIn = true;
-						fish.sprite.setPosition(window.getSize().x / 2, -500);
+
+						fish.sprite.setPosition(camera.getCenter().x, -500);
 						startImmunity();
 						for (int i = 0; i < FISH_COUNT1; i++)
 							fishes1[i].init(Fish::type::MINNOW, backgr, background);
@@ -709,13 +726,17 @@ int main()
 						fish.fishLevel = 2.f;
 						gameWin = 0;
 						fish.fishSize = 1.f;
-						currentProgress = 0.f;
+						currentProgress = 48000.f;
 						lives = 3;
 						score = 0;
 						multiple = 1;
 						alreadywon = 0;
 						esacpedFish = 0;
 						mermaid.isActive = true;
+						mermaid.spawnedBubbleCount = 0;
+						for (int i = 0; i < 4; i++) fishscoresh[i].finalCount = 0;
+						for (int i = 0; i < 10; i++) mermaidBubbles[i].spawn(bubbleTextures[0], window.getSize(), true);
+
 						initializeMainFish(currentLevel);
 						initializeBackground(background, currentLevel);
 						if (option.bubblepressed[0])
@@ -785,8 +806,9 @@ int main()
 			saveScore(score);
 			saveNewLevel(currentLevel);
 			gameWin = 0;
-			//state = GameState::Paused;
 			state = GameState::win;
+			mermaid.spawnedBubbleCount = 0;
+			//mermaid.bubbleClock.restart();
 
 
 		}
@@ -809,6 +831,7 @@ int main()
 		}
 		if (gameStartClicked && state == GameState::Playing)
 		{
+			window.setMouseCursorVisible(false);
 			window.draw(background);
 			if (state != GameState::Playing)
 				deltaTime = 0;
@@ -842,7 +865,7 @@ int main()
 								oyster.sprite.setTextureRect(oyster.openRect);
 								oyster.hasPowerUp = (rand() % 2 == 0);
 								oyster.blackOrWhite = rand() % 4;
-								oyster.pearl.setTextureRect((oyster.blackOrWhite == 0) ? IntRect(2, 105, 45, 45) : IntRect(3, 155, 45, 45)); // white and black
+								oyster.pearl.setTextureRect((oyster.blackOrWhite == 0) ? IntRect(2, 105, 45, 45) : IntRect(3, 155, 45, 45));
 							}
 
 							oyster.timer = oyster.isOpen ? oyster.openTime : oyster.closedTime;
@@ -870,7 +893,7 @@ int main()
 										if (option.bubblepressed[0])
 											playerDieSound.play();
 										camera.setCenter(camera.getCenter());
-										fish.sprite.setPosition(window.getSize().x / 2, -fish.imageSize.y);
+										fish.sprite.setPosition(camera.getCenter().x, -fish.imageSize.y);
 										fish.settled = false;
 										fish.eated = true;
 										float stageSize = levelMax / 3.f;
@@ -897,11 +920,22 @@ int main()
 			{
 				for (int i = 0; i < 3; ++i)
 				{
-					if (option.bubblepressed[3] && bubbles[i].isActive)
+					if (option.bubblepressed[3] && bubbles[i].isActive && !gameWin)
 					{
 						bubbles[i].update(deltaTime);
 						bubbles[i].draw();
 						bubbles[i].checkCollision(fish, score, multiple, lives);
+					}
+				}
+			}
+			else {
+				for (int i = 0; i < 10; ++i)
+				{
+					if (mermaidBubbles[i].isActive)
+					{
+						mermaidBubbles[i].update(deltaTime);
+						mermaidBubbles[i].draw();
+						mermaidBubbles[i].checkCollision(fish, score, multiple, lives);
 					}
 				}
 			}
@@ -948,9 +982,8 @@ int main()
 			updateMainFish(deltaTime);
 			view.setCenter(fish.sprite.getPosition());
 			cameraUpdate(backgroundBounds, deadZone);
-			// Update HUD data
 			hud.updateHUD(deltaTime);
-			window.setView(camera); // camera's view
+			window.setView(camera);
 			window.draw(fish.sprite);
 			if (mermaid.isActive && gameWin)
 			{
@@ -966,6 +999,7 @@ int main()
 		}
 		else if (highScoresClicked)
 		{
+			window.setMouseCursorVisible(true);
 			gameStartClicked = false;
 			creditsClicked = false;
 
@@ -973,7 +1007,6 @@ int main()
 			window.draw(optionsFrameSprite);
 			drawScores();
 
-			// Done button
 			window.draw(doneButton.sprite);
 			if (event.type == Event::MouseButtonPressed && event.mouseButton.button == Mouse::Left)
 			{
@@ -990,6 +1023,7 @@ int main()
 		}
 		else if (creditsClicked)
 		{
+			window.setMouseCursorVisible(true);
 			highScoresClicked = false;
 			gameStartClicked = false;
 
@@ -997,7 +1031,6 @@ int main()
 			window.draw(optionsFrameSprite);
 			drawOurCredits();
 
-			// Done button
 			window.draw(doneButton.sprite);
 			if (event.type == Event::MouseButtonPressed && event.mouseButton.button == Mouse::Left)
 			{
@@ -1012,10 +1045,14 @@ int main()
 			}
 			drawDone();
 		}
+		else {
+			window.setMouseCursorVisible(true);
+		}
 
 		mousePos = window.mapPixelToCoords(Mouse::getPosition(window));
 		if (state == GameState::NameEntry) {
 			window.setView(window.getDefaultView());
+			window.setMouseCursorVisible(true);
 			Text nameText;
 			nameText.setFont(font);
 			if (playerName.size())
@@ -1044,6 +1081,7 @@ int main()
 		}
 		if (state == GameState::levels)
 		{
+			window.setMouseCursorVisible(true);
 			window.setView(window.getDefaultView());
 			window.draw(mainMenuBGSprite);
 			for (int i = 0; i < 4; i++)
@@ -1055,6 +1093,7 @@ int main()
 		}
 		if (state == GameState::Paused)
 		{
+			window.setMouseCursorVisible(true);
 			window.setView(window.getDefaultView());
 			window.draw(mainMenuBGSprite);
 			pauseMenu.render(window, score, highScores[0].score, fisheaten);
@@ -1062,13 +1101,14 @@ int main()
 		}
 		if (state == GameState::Gameover)
 		{
+			window.setMouseCursorVisible(true);
 			window.setView(window.getDefaultView());
 			gameover.render(window, score);
 			gameover.update(mousePos, window);
 		}
 		if (state == GameState::options)
 		{
-			// gameStartClicked = false;
+			window.setMouseCursorVisible(true);
 			creditsClicked = false;
 			highScoresClicked = false;
 			window.draw(mainMenuBGSprite);
@@ -1076,8 +1116,9 @@ int main()
 			option.render(window);
 			option.hover(mousePos, window);
 		}
-		if (state == GameState::win) //------------draw
+		if (state == GameState::win)
 		{
+			window.setMouseCursorVisible(true);
 			window.setView(window.getDefaultView());
 			window.draw(mainMenuBGSprite);
 			win(mousePos, event, score, highScores[0].score, fisheaten);
@@ -1270,11 +1311,9 @@ void loadScores()
 		}
 		highScoresFile.close();
 
-		// Sort descending
 		sort(tempScores.begin(), tempScores.end(), [](const PlayerScore& a, const PlayerScore& b) {
 			return a.score > b.score;
 			});
-		// Copy top 10
 		scoreCount = min(10, (int)tempScores.size());
 		for (int i = 0; i < scoreCount; ++i) {
 			highScores[i] = tempScores[i];
@@ -1313,14 +1352,6 @@ void drawScores()
 	window.draw(HighScoresTitle);
 
 	int displayCount = min(scoreCount, 10);
-	/*for (int i = 0; i < displayCount; ++i)
-	{
-		Text scoreText(highScores[i].name + "\t\t" + to_string(highScores[i].score), gameFont, 45);
-		scoreText.setFillColor(Color::White);
-		scoreText.setPosition(790.f, (float)i * 40.f + 350.f);
-
-		window.draw(scoreText);
-	}*/
 	const int maxNameLength = 10;
 	const float nameX = 720.f;
 	const float scoreX = 1050.f;
@@ -1379,16 +1410,22 @@ void drawOurCredits()
 void initializeMainFish(int currentLevel)
 {
 
-	if (currentLevel < 3)
+	if (currentLevel < 3) {
 		fish.fishTexture.loadFromFile("./assets/fish_spritesheets/angel_fish.png");
-	else
+		fish.mouth.setSize({ 25,25 });
+		fish.isGreen = false;
+	}
+	else {
 		fish.fishTexture.loadFromFile("./assets/fish_spritesheets/Anglerfish.png");
+		fish.mouth.setSize({ 50,50 });
+		fish.isGreen = true;
 
+	}
 	fish.imageSize = Vector2f(fish.fishTexture.getSize().x / 15.f, fish.fishTexture.getSize().y / 4.f);
-	// Initialize fish
 	fish.sprite.setTexture(fish.fishTexture);
 	fish.sprite.setOrigin(fish.imageSize.x / 2, fish.imageSize.y / 2);
-	fish.sprite.setPosition(window.getSize().x / 2, -fish.imageSize.y); // start above screen
+
+	fish.sprite.setPosition(camera.getCenter().x, -fish.imageSize.y); // start above screen
 	fish.sprite.setTextureRect(IntRect(0 * fish.imageSize.x + 2, fish.imageSize.y + 1, fish.imageSize.x - 2, fish.imageSize.y - 1));
 }
 void moveFish(float deltaTime)
@@ -1398,19 +1435,12 @@ void moveFish(float deltaTime)
 	Vector2f fishPos = fish.sprite.getPosition();
 	Vector2f delta = worldMouse - fishPos;
 	float distance = sqrt(delta.x * delta.x + delta.y * delta.y);
-	// First drop animation
 	if (!fish.settled)
 	{
 		if (fish.sprite.getPosition().y < window.getSize().y / 2.f)
-		{
 			fish.sprite.move(0.f, fish.speed * deltaTime);
-		}
 		else
-		{
-			/*Vector2i centerMousePos(window.getSize().x / 2, window.getSize().y / 2);
-			Mouse::setPosition(centerMousePos, window);*/
 			fish.settled = true;
-		}
 	}
 	// Recharge dash bar over time
 	if (fish.dashBar < 1.0f)
@@ -1470,6 +1500,23 @@ void moveFish(float deltaTime)
 			fish.dashing = false;
 		}
 	}
+	if (fish.facingLeft) {
+		if (fish.isGreen) {
+			fish.mouth.setPosition(fish.sprite.getGlobalBounds().left, fish.sprite.getGlobalBounds().top + fish.sprite.getGlobalBounds().height / 2);
+		}
+		else {
+			fish.mouth.setPosition(fish.sprite.getGlobalBounds().left, fish.sprite.getGlobalBounds().top + fish.sprite.getGlobalBounds().height / 2 - 10);
+		}
+	}
+	if (!fish.facingLeft) {
+		if (fish.isGreen) {
+			fish.mouth.setPosition(fish.sprite.getGlobalBounds().left + fish.sprite.getGlobalBounds().width - 60, fish.sprite.getGlobalBounds().top + fish.sprite.getGlobalBounds().height / 2);
+
+		}
+		else
+			fish.mouth.setPosition(fish.sprite.getGlobalBounds().left + fish.sprite.getGlobalBounds().width - 25, fish.sprite.getGlobalBounds().top + fish.sprite.getGlobalBounds().height / 2 - 10);
+
+	}
 }
 void applyBoundaries()
 {
@@ -1512,7 +1559,6 @@ void updateAnimation(float deltaTime)
 	if (fish.eated)
 	{
 		fish.eated = false;
-		fish.sprite.setPosition(window.getSize().x / 2, -500);
 		fish.settled = false;
 	}
 	if (fish.turning)
@@ -1569,8 +1615,6 @@ void updateMainFishScale()
 	fish.fishLevel = (int)(currentProgress / (levelMax / 3.0f)) + 2;
 	int level = min(2, (int)(currentProgress / (levelMax / 3.0f)));
 	fish.fishSize = 1 + (level * 0.2);
-	if (!fish.pendingFlip && !fish.eated)
-		fish.sprite.setScale(fish.fishSize * (fish.facingLeft ? 1.f : -1.f), fish.fishSize);
 }
 void updateMainFish(float deltaTime)
 {
@@ -1594,18 +1638,15 @@ void cameraUpdate(const FloatRect& backgroundBounds, const FloatRect& deadZone)
 	float targetX = camera.getCenter().x;
 	float targetY = camera.getCenter().y;
 
-	// Horizontal dead zone check
 	if (targetPosition.x < camera.getCenter().x - deadZone.width / 2)
 		targetX = targetPosition.x + deadZone.width / 2;
 	else if (targetPosition.x > camera.getCenter().x + deadZone.width / 2)
 		targetX = targetPosition.x - deadZone.width / 2;
-	// Vertical dead zone check
 	if (targetPosition.y < camera.getCenter().y - deadZone.height / 2)
 		targetY = targetPosition.y + deadZone.height / 2;
 	else if (targetPosition.y > camera.getCenter().y + deadZone.height / 2)
 		targetY = targetPosition.y - deadZone.height / 2;
 
-	// Clamp to background bounds
 	targetX = max(targetX, backgroundBounds.left + camera.getSize().x / 2);
 	targetX = min(targetX, backgroundBounds.left + backgroundBounds.width - camera.getSize().x / 2);
 	targetY = max(targetY, backgroundBounds.top + camera.getSize().y / 2);
@@ -1622,17 +1663,27 @@ bool checkCollision(const Sprite& a, const Sprite& b)
 	return a.getGlobalBounds().intersects(b.getGlobalBounds());
 }
 bool checkFishCollision(Fish& a, Fish& b) {
-	return a.sprite.getGlobalBounds().intersects(b.getGlobalBounds());
+	if (int(a.current_type) > int(b.current_type))
+		return a.mouth.getGlobalBounds().intersects(b.getGlobalBounds());
+	if (int(b.current_type) > int(a.current_type))
+		return b.mouth.getGlobalBounds().intersects(a.getGlobalBounds());
+
 }
 bool checkMainFishCollision(MainFish& a, Fish& b) {
-	return a.sprite.getGlobalBounds().intersects(b.getGlobalBounds());
-}
+	int npcLevel = (int)(b.current_type);
 
+	float ratio = currentProgress / levelMax;
+	int effectiveLevel = 2 + (int)(ratio * 3);
+	if (effectiveLevel >= npcLevel)
+		return a.mouth.getGlobalBounds().intersects(b.getGlobalBounds());
+	return b.mouth.getGlobalBounds().intersects(a.getGlobalBounds());
+
+}
 void checkAndEatFishCollision(Fish& fish1, Fish& fish2)
 {
 	if (checkFishCollision(fish1, fish2) && fish1.isinBackground() && fish2.isinBackground() && !gameWin)
 	{
-		if (int(fish1.current_type) > int(fish2.current_type) //&& fish2.Eated_frame == 0
+		if (int(fish1.current_type) > int(fish2.current_type)
 			)
 		{
 			if (fish1.Eating_frame == 0)
@@ -1709,7 +1760,8 @@ void checkAndEatPlayerFish(Fish& otherFish)
 					if (option.bubblepressed[0])
 						playerDieSound.play();
 					camera.setCenter(camera.getCenter());
-					fish.sprite.setPosition(window.getSize().x / 2, -fish.imageSize.y);
+					fish.sprite.setPosition(camera.getCenter().x, -fish.imageSize.y);
+
 					fish.settled = false;
 					fish.eated = true;
 					float stageSize = levelMax / 3.f;
@@ -1772,7 +1824,6 @@ void update(Event event, Vector2f mousePos, bool& backToMenuTimerStarted)
 		}
 		if (pauseMenu.isQuitClicked(mousePos))
 		{
-			// window.close();
 			if (option.bubblepressed[1])
 			{
 				CurrentSound = menuSound;
@@ -1786,7 +1837,6 @@ void update(Event event, Vector2f mousePos, bool& backToMenuTimerStarted)
 			backToMenuClock.restart();
 			backToMenuTimerStarted = true;
 		}
-		// mainMenuOpen = 0;
 	}
 	if (state == GameState::options && event.type == Event::MouseButtonPressed)
 	{
@@ -1821,7 +1871,6 @@ void update(Event event, Vector2f mousePos, bool& backToMenuTimerStarted)
 			state = GameState::Playing;
 	}
 
-	// Handle mouse clicks when gameover
 	if (state == GameState::Gameover && event.type == Event::MouseButtonPressed)
 	{
 
@@ -1836,7 +1885,6 @@ void update(Event event, Vector2f mousePos, bool& backToMenuTimerStarted)
 				CurrentSound = menuSound;
 				CurrentSound.play();
 			}
-			// menuSound.play();
 			CurrentSound.setLoop(true);
 			gameWin = 0;
 			state = GameState::levels;
@@ -1928,6 +1976,15 @@ void updateMermaid(Mermaid& mermaid, float deltaTime)
 		mermaid.sprite.setTextureRect(IntRect(col * frameWidth, row * frameHeight, frameWidth, frameHeight));
 		mermaid.animationClock.restart();
 	}
+	if (gameWin && mermaid.spawnedBubbleCount < 10 && mermaid.bubbleClock.getElapsedTime().asSeconds() > 0.5f)
+	{
+		int i = mermaid.spawnedBubbleCount;
+		mermaidBubbles[i].init(BubbleType::Star);
+		mermaidBubbles[i].spawn(bubbleTextures[0], window.getSize(), true);
+		mermaidBubbles[i].sprite.setPosition(mermaid.sprite.getPosition().x, mermaid.sprite.getPosition().y + 20);
+		mermaid.spawnedBubbleCount++;
+		mermaid.bubbleClock.restart();
+	}
 }
 void initOyster(Oyster& oyster, float x, float y)
 {
@@ -1935,9 +1992,12 @@ void initOyster(Oyster& oyster, float x, float y)
 	oyster.sprite.setTexture(oysterTexture);
 	oyster.closedRect = IntRect(2, 2, 98.5, 98.5);
 	oyster.openRect = IntRect(404 + 2, 2, 98.5, 98.5);
-
+	oyster.boundaries.setFillColor(sf::Color::Blue);
+	oyster.boundaries.setSize({ 100,75 });
 	oyster.sprite.setTextureRect(oyster.closedRect);
 	oyster.sprite.setPosition(x, y);
+	oyster.boundaries.setPosition(oyster.sprite.getGlobalBounds().left + oyster.sprite.getGlobalBounds().width - 45,
+		oyster.sprite.getGlobalBounds().top + oyster.sprite.getGlobalBounds().height / 2 + 20);
 	oyster.sprite.setScale(2.f, 2.f);
 
 	oyster.isOpen = false;
@@ -1959,7 +2019,8 @@ void initOyster(Oyster& oyster, float x, float y)
 }
 bool checkOysterCollision(const Oyster& oyster, const Sprite& fishSprite)
 {
-	if (!oyster.isOpen && checkCollision(oyster.sprite, fishSprite))
+	;
+	if (!oyster.isOpen && oyster.boundaries.getGlobalBounds().intersects(fishSprite.getGlobalBounds()))
 	{
 		return true;
 	}
@@ -2065,8 +2126,6 @@ void win(Vector2f mousePos, Event event, int& scorenum, int& highscorenum, int& 
 	wining.score.setString("Your score : " + to_string(scorenum));
 	wining.highscore.setString("High Score : " + to_string(highscorenum));
 	wining.fisheaten.setString("Fish Eaten : " + to_string(fisheat));
-
-
 
 	window.draw(wining.Puase);
 	window.draw(wining.cersor);

@@ -5,7 +5,7 @@
 //==initialization==//
 Fish::Fish() {};
 
-void Fish::init(Fish::type type, sf::Texture background_texture, sf::Sprite& background_sprite)
+void Fish::init(Fish::type type, sf::Texture& background_texture, sf::Sprite& background_sprite)
 {
 	//setting working area
 	work_area.x = background_texture.getSize().x * 3 + 100;
@@ -22,16 +22,25 @@ void Fish::init(Fish::type type, sf::Texture background_texture, sf::Sprite& bac
 		fish_texture.loadFromFile("./assets/fish_spritesheets/Minow.png");
 		fish_widthSize = 2395 / 14.0f;
 		fish_heightSize = 319 / 3.0f;
+		sprite.setTexture(fish_texture);
 		sprite.setTextureRect(sf::IntRect(2, 1 * fish_heightSize + 1,
 			fish_widthSize - 3, fish_heightSize - 1));
+		sprite.setOrigin(sprite.getLocalBounds().width / 2, sprite.getLocalBounds().height / 2);
+
 		break;
 
 	case Fish::type::SURGEON_FISH:
 		fish_texture.loadFromFile("./assets/fish_spritesheets/surgeon_fish.png");
 		fish_widthSize = 2395 / 14.0f;
 		fish_heightSize = 319 / 3.0f;
+		sprite.setTexture(fish_texture);
 		sprite.setTextureRect(sf::IntRect(2, 1 * fish_heightSize + 1,
 			fish_widthSize - 3, fish_heightSize - 1));
+
+		sprite.setOrigin(sprite.getGlobalBounds().width / 2, sprite.getGlobalBounds().height / 2);
+		mouth.setFillColor(sf::Color::Blue);
+		mouth.setSize({ 30,30 });
+
 		break;
 
 	case Fish::type::LION_FISH:
@@ -39,13 +48,16 @@ void Fish::init(Fish::type type, sf::Texture background_texture, sf::Sprite& bac
 		fish_row = 0;
 		fish_widthSize = 992 / 15.0f;
 		fish_heightSize = 99 / 2.0f;
+		sprite.setTexture(fish_texture);
 		sprite.setTextureRect(sf::IntRect(2, fish_row * fish_heightSize + 1,
 			fish_widthSize - 2, fish_heightSize - 1));
+
+		sprite.setOrigin(sprite.getGlobalBounds().width / 2, sprite.getGlobalBounds().height / 2);
+		mouth.setFillColor(sf::Color::Blue);
+		mouth.setSize({ 50,50 });
 		break;
 	}
 
-	sprite.setTexture(fish_texture);
-	sprite.setOrigin(sprite.getGlobalBounds().width / 2, sprite.getGlobalBounds().height / 2);
 	idle();
 }
 
@@ -53,13 +65,13 @@ void Fish::init(Fish::type type, sf::Texture background_texture, sf::Sprite& bac
 void Fish::update(float dt) {
 	deltatime = dt;
 
-	if (sprite.getPosition().x >= work_area.x && isOutscreen) {
+	if (sprite.getPosition().x >= work_area.x + 200 && isOutscreen) {
 		setDirection();
 		if (X_Y_direction.x == 1) setPosition(true);
 		escaping = 0;
 	}
 
-	if (sprite.getPosition().x <= -100 && isOutscreen) {
+	if (sprite.getPosition().x <= -200 && isOutscreen) {
 		setDirection();
 		if (X_Y_direction.x == -1) setPosition(false);
 		escaping = 0;
@@ -103,6 +115,33 @@ void Fish::update(float dt) {
 		X_Y_direction.x * std::sin(angle) * X_Y_direction.y * speed * deltatime * int(current_type) * int(!(returning_frame > 0))
 	);
 
+	//handing mouth position
+	if (current_type == Fish::type::SURGEON_FISH) {
+		if (X_Y_direction.x == 1)
+		{
+			mouth.setPosition(sprite.getGlobalBounds().left + sprite.getGlobalBounds().width - 30,
+				sprite.getGlobalBounds().top + sprite.getGlobalBounds().height / 2);
+		}
+		else if (X_Y_direction.x == -1) {
+			mouth.setPosition(sprite.getGlobalBounds().left,
+				sprite.getGlobalBounds().top + sprite.getGlobalBounds().height / 2);
+
+		}
+	}
+	else if (current_type == Fish::type::LION_FISH) {
+
+		if (X_Y_direction.x == 1)
+		{
+			mouth.setPosition(sprite.getGlobalBounds().left + sprite.getGlobalBounds().width - 50,
+				sprite.getGlobalBounds().top + sprite.getGlobalBounds().height / 2 + 20);
+		}
+		else if (X_Y_direction.x == -1) {
+			mouth.setPosition(sprite.getGlobalBounds().left,
+				sprite.getGlobalBounds().top + sprite.getGlobalBounds().height / 2 + 20);
+
+		}
+	}
+
 	sprite.setScale(X_Y_direction.x * -0.45 * eat_scale.x * int(current_type),
 		0.45 * int(current_type) * eat_scale.y);
 }
@@ -120,7 +159,7 @@ void Fish::swimming() {
 			fish_widthSize = 991 / 15.0f;
 			fish_heightSize = 99 / 2.0f;
 			sprite.setTextureRect(sf::IntRect(fish_column * fish_widthSize + 2,
-				fish_row * fish_heightSize + 1, fish_widthSize - 3, fish_heightSize - 1));
+				fish_row * fish_heightSize + 2, fish_widthSize - 3, fish_heightSize - 2));
 			fish_column = (fish_column + 1) % 15;
 			break;
 
@@ -128,7 +167,7 @@ void Fish::swimming() {
 			fish_widthSize = 2395 / 14.0f;
 			fish_heightSize = 319 / 3.0f;
 			sprite.setTextureRect(sf::IntRect(fish_column * fish_widthSize + 2,
-				fish_row * fish_heightSize + 1, fish_widthSize - 3, fish_heightSize - 1));
+				fish_row * fish_heightSize + 2, fish_widthSize - 3, fish_heightSize - 2));
 			fish_column = (fish_column + 1) % 14;
 			break;
 
@@ -137,7 +176,7 @@ void Fish::swimming() {
 			fish_widthSize = 2535 / 14.0f;
 			fish_heightSize = 645 / 4.0f;
 			sprite.setTextureRect(sf::IntRect(fish_column * fish_widthSize + 2,
-				fish_row * fish_heightSize + 1, fish_widthSize - 2, fish_heightSize - 1));
+				fish_row * fish_heightSize + 2, fish_widthSize - 2, fish_heightSize - 2));
 			fish_column = (fish_column + 1) % 14;
 			break;
 		}
@@ -183,14 +222,14 @@ void Fish::returning() {
 
 	if (timer >= 0.06f) {
 		switch (current_type) {
-		case Fish::type::MINNOW:
-			fish_row = 1;
-			fish_column = 7 - returning_frame;
-			fish_widthSize = 991 / 15.0f;
-			fish_heightSize = 99 / 2.0f;
-			sprite.setTextureRect(sf::IntRect(fish_column * fish_widthSize + 2,
-				fish_row * fish_heightSize + 1, fish_widthSize - 3, fish_heightSize - 2));
-			break;
+			/*case Fish::type::MINNOW:
+				fish_row = 1;
+				fish_column = 7 - returning_frame;
+				fish_widthSize = 991 / 15.0f;
+				fish_heightSize = 99 / 2.0f;
+				sprite.setTextureRect(sf::IntRect(fish_column * fish_widthSize + 2,
+					fish_row * fish_heightSize + 2, fish_widthSize - 3, fish_heightSize - 2));
+				break;*/
 
 		case Fish::type::SURGEON_FISH:
 			fish_column = 5 - returning_frame;
@@ -198,7 +237,7 @@ void Fish::returning() {
 			fish_widthSize = 2395 / 14.0f;
 			fish_heightSize = 319 / 3.0f;
 			sprite.setTextureRect(sf::IntRect(fish_column * fish_widthSize + 2,
-				fish_row * fish_heightSize + 1, fish_widthSize - 3, fish_heightSize - 1));
+				fish_row * fish_heightSize + 2, fish_widthSize - 3, fish_heightSize - 2));
 			break;
 
 		case Fish::type::LION_FISH:
@@ -207,7 +246,7 @@ void Fish::returning() {
 			fish_widthSize = 2535 / 14.0f;
 			fish_heightSize = 645 / 4.0f;
 			sprite.setTextureRect(sf::IntRect(fish_column * fish_widthSize + 2,
-				fish_row * fish_heightSize + 1, fish_widthSize - 2, fish_heightSize - 1));
+				fish_row * fish_heightSize + 2, fish_widthSize - 2, fish_heightSize - 2));
 			break;
 
 		}
@@ -229,7 +268,7 @@ void Fish::eating() {
 			fish_widthSize = 2395 / 14.0f;
 			fish_heightSize = 319 / 3.0f;
 			sprite.setTextureRect(sf::IntRect(fish_column * fish_widthSize + 2,
-				fish_row * fish_heightSize + 1, fish_widthSize - 3, fish_heightSize - 1));
+				fish_row * fish_heightSize + 2, fish_widthSize - 3, fish_heightSize - 2));
 			Eating_frame--;
 			break;
 
@@ -238,7 +277,7 @@ void Fish::eating() {
 			fish_widthSize = 2535 / 14.0f;
 			fish_heightSize = 645 / 4.0f;
 			sprite.setTextureRect(sf::IntRect(fish_column * fish_widthSize + 2,
-				fish_row * fish_heightSize + 1, fish_widthSize - 2, fish_heightSize - 1));
+				fish_row * fish_heightSize + 2, fish_widthSize - 2, fish_heightSize - 2));
 			Eating_frame--;
 			break;
 
@@ -252,7 +291,7 @@ void Fish::eating() {
 void Fish::eated() {
 	timer += deltatime;
 
-	if (timer >= 0.08f) {
+	if (timer >= 0.04f) {
 		timer = 0.0f;
 		if (Eated_frame > 1) {
 			eat_scale.x *= 0.5f;
@@ -278,11 +317,12 @@ void Fish::eated() {
 
 void Fish::setPosition(bool isstart) {
 	if (isstart) {
-		sprite.setPosition(-100, randPosition(int(work_area.y)) + work_area.y / 3);
+		sprite.setPosition(-200, randPosition(int(work_area.y)) + work_area.y / 3);
 	}
 	else {
-		sprite.setPosition(work_area.x, randPosition(int(work_area.y)) + work_area.y / 3);
+		sprite.setPosition(work_area.x + 200, randPosition(int(work_area.y)) + work_area.y / 3);
 	}
+	mouth.setPosition(sprite.getPosition().x + 50, sprite.getPosition().y);
 
 	speed = 65.0f;
 	angle = randPosition(30) * 3.14159265f / 180.0f;
@@ -304,19 +344,23 @@ int Fish::randPosition(int modulo) {
 }
 
 void Fish::isEating() {
-	switch (current_type) {
-	case Fish::type::SURGEON_FISH: Eating_frame = 5; break;
-	case Fish::type::LION_FISH: Eating_frame = 6; break;
-	default: break;
+	if (!Eating_frame) {
+		switch (current_type) {
+		case Fish::type::SURGEON_FISH: Eating_frame = 5; break;
+		case Fish::type::LION_FISH: Eating_frame = 6; break;
+		default: break;
+		}
 	}
 	returning_frame = 0;
 }
 
 void Fish::isReturning() {
-	switch (current_type) {
-	case Fish::type::MINNOW: returning_frame = 7; break;
-	case Fish::type::SURGEON_FISH:
-	case Fish::type::LION_FISH: returning_frame = 5; break;
+	if (!returning_frame) {
+		switch (current_type) {
+		case Fish::type::MINNOW: returning_frame = 1; break;
+		case Fish::type::SURGEON_FISH:
+		case Fish::type::LION_FISH: returning_frame = 5; break;
+		}
 	}
 	Eating_frame = 0;
 }
@@ -341,9 +385,9 @@ sf::FloatRect Fish::getGlobalBounds() {
 	if (current_type == Fish::type::MINNOW)
 		return sprite.getGlobalBounds();
 	sf::FloatRect globalBounds = sprite.getGlobalBounds();
-	globalBounds.left += globalBounds.left / 12;
-	globalBounds.top += globalBounds.top / 12;
-	globalBounds.height -= globalBounds.height / 2.5;
-	globalBounds.width -= globalBounds.width / 2.5;
+	globalBounds.left += globalBounds.left / 24;
+	globalBounds.top += globalBounds.top / 24;
+	globalBounds.height -= globalBounds.height / 12;
+	globalBounds.width -= globalBounds.width / 12;
 	return globalBounds;
 }
