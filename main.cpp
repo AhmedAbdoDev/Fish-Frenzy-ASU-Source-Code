@@ -1,4 +1,4 @@
-#include <SFML/Graphics.hpp>
+﻿#include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
 #include <iostream>
 #include <algorithm>
@@ -152,11 +152,12 @@ struct FishCounter
 } fishscoresh[4];
 
 // alaa ashraf
-SoundBuffer menuBuffer, gameOverBuffer, bite1Buffer, bite2Buffer, bite3Buffer, mermaidBuffer, playerDieBuffer, playerSpawnBuffer, stageIntroBuffer, gameplayBuffer, mineExplosionBuffer;
-Sound menuSound, gameOverSound, bite1Sound, bite2Sound, bite3Sound, mermaidSound, playerDieSound, playerSpawnSound, stageIntroSound, gameplaySound, mineExplosionSound;
+SoundBuffer menuBuffer, gameOverBuffer, bite1Buffer, bite2Buffer, bite3Buffer, mermaidBuffer, playerDieBuffer, playerSpawnBuffer, stageIntroBuffer, gameplayBuffer, mineExplosionBuffer, playerGrowBuffer, starPickupBuffer;
+Sound menuSound, gameOverSound, bite1Sound, bite2Sound, bite3Sound, mermaidSound, playerDieSound, playerSpawnSound, stageIntroSound, gameplaySound, mineExplosionSound, playerGrowSound, starPickupSound;
 Sound CurrentSound;
 bool soundStopped = 0;
 void initializeSounds();
+float  multipleTimer;
 enum BubbleType {
 	Star,
 	Multiple,
@@ -182,17 +183,18 @@ struct StarBubble
 		sprite.setTexture(texture);
 		sprite.setTextureRect(IntRect(0, 0, type == BubbleType::Multiple ? 36 : 40, type == BubbleType::Multiple ? 36 : 40));
 		sprite.setScale(2.f, 2.f);
-		sprite.setPosition(startPos);
 		isActive = true;
 		fallDown = dropDown;
 
 		if (fallDown)
 		{
-			velocity.x = static_cast<float>((rand() % 60) - 30); 
-			velocity.y = -300.f; 
+			sprite.setPosition(startPos);
+			velocity.x = static_cast<float>((rand() % 60) - 30);
+			velocity.y = -300.f;
 		}
 		else
 		{
+			sprite.setPosition(rand() % (windowSize.x - 120), windowSize.y);
 			velocity.x = 0.f;
 			velocity.y = -speed;
 		}
@@ -244,7 +246,7 @@ struct StarBubble
 				lives += 1;
 
 			if (option.bubblepressed[0])
-				bite1Sound.play();
+				starPickupSound.play();
 
 			if (!fish.eating)
 			{
@@ -265,7 +267,7 @@ struct Mermaid
 	Clock bubbleClock;
 	int spawnedBubbleCount = 0;
 	int currentFrame = 0;
-	float speed = 500.f;
+	float speed = 450.f;
 	bool isActive = true;
 
 	static const int columns = 10;
@@ -322,7 +324,7 @@ struct Button
 	}
 };
 
-Button newGameBtn, optionsBtn, highScoresBtn, exitBtn, doneButton, exitName;
+Button newGameBtn, optionsBtn, highScoresBtn, exitBtn, doneButton;
 
 // Textures
 Texture mainMenuBGTexture, gameTitleTexture, optionsFrameTexture, creditsBarTexture;
@@ -630,15 +632,10 @@ int main()
 			deltaTime = 0.6f;
 		Event event;
 		Vector2f mousePos = window.mapPixelToCoords(Mouse::getPosition(window));
-		exitName = exitBtn;
-		FloatRect exitBtnBounds = exitName.sprite.getLocalBounds();
-		exitName.sprite.setOrigin(exitBtnBounds.left + exitBtnBounds.width / 2.f, exitBtnBounds.top + exitBtnBounds.height / 2.f);
-		exitName.setPosition(window.getSize().x / 2.f, exitName.sprite.getPosition().y);
 		newGameBtn.updateTexture(mousePos);
 		optionsBtn.updateTexture(mousePos);
 		highScoresBtn.updateTexture(mousePos);
 		exitBtn.updateTexture(mousePos);
-		exitName.updateTexture(mousePos);
 		doneButton.updateTexture(mousePos);
 		if (!option.bubblepressed[1])
 		{
@@ -707,7 +704,8 @@ int main()
 
 				mainMenuOpen = !(gameStartClicked || highScoresClicked || creditsClicked || state == GameState::levels);
 			}
-			if (event.type == Event::MouseButtonPressed && event.mouseButton.button == Mouse::Left && exitName.sprite.getGlobalBounds().contains(mousePos) && mainMenuOpen && state == GameState::NameEntry) {
+
+			if (event.type == Event::KeyPressed && event.key.code == Keyboard::Escape && mainMenuOpen && state == GameState::NameEntry) {
 				cout << "Game Closed, Bye Bye\n";
 				window.close();
 			}
@@ -742,16 +740,23 @@ int main()
 						fish.fishLevel = 2.f;
 						gameWin = 0;
 						fish.fishSize = 1.f;
-						currentProgress = 48000.f;
+						currentProgress = 0.f;
 						lives = 3;
 						score = 0;
-						multiple = 1;
+						multiple = 5;
 						alreadywon = 0;
 						esacpedFish = 0;
 						mermaid.isActive = true;
 						mermaid.spawnedBubbleCount = 0;
 						for (int i = 0; i < 4; i++) fishscoresh[i].finalCount = 0;
-						for (int i = 0; i < 10; i++) mermaidBubbles[i].spawn(bubbleTextures[0], window.getSize(), true);
+
+						for (int i = 0; i < 10; i++)
+						{
+							mermaidBubbles[i].isActive = false;
+							mermaidBubbles[i].velocity = { 0.f, 0.f };
+							mermaidBubbles[i].fallDown = false;
+						}
+
 
 						initializeMainFish(currentLevel);
 						initializeBackground(background, currentLevel);
@@ -781,18 +786,20 @@ int main()
 				else
 					levelPearls[i].setTextureRect(IntRect(0 * levelsImageSize.x, (arrOFlevels[i] ? 1 : 0) * levelsImageSize.y, levelsImageSize.x, levelsImageSize.y + 1));
 			}
+			if (state == GameState::NameEntry) {
 
-			if (event.type == Event::TextEntered) {
-				if (event.text.unicode == '\b' && !playerName.empty()) {
-					playerName.pop_back();
+				if (event.type == Event::TextEntered) {
+					if (event.text.unicode == '\b' && !playerName.empty()) {
+						playerName.pop_back();
+					}
+					else if (event.text.unicode < 128 && isprint(event.text.unicode) && playerName.size() < 12) {
+						playerName += char(event.text.unicode);
+					}
 				}
-				else if (event.text.unicode < 128 && isprint(event.text.unicode) && playerName.size() < 12) {
-					playerName += char(event.text.unicode);
+				if (event.type == Event::KeyPressed && event.key.code == Keyboard::Enter) {
+					if (playerName.empty()) playerName = "anonymous";
+					state = GameState::Playing;
 				}
-			}
-			if (event.type == Event::KeyPressed && event.key.code == Keyboard::Enter) {
-				if (playerName.empty()) playerName = "Anonymous";
-				state = GameState::Playing;
 			}
 		}
 		if (currentProgress >= levelMax && !gameWin && gameStartClicked && winIn)
@@ -812,8 +819,10 @@ int main()
 				if (fishes3[i].Eated_frame == 0)
 					fishes3[i].isEscaping();
 			CurrentSound = mermaidSound;
-			if (option.bubblepressed[0])
+			if (option.bubblepressed[0]) {
 				CurrentSound.play();
+				if (soundStopped) mermaidSound.play();
+			}
 		}
 		if (GameWin.getElapsedTime().asSeconds() >= 1.5f && gameWin && gameStartClicked && !winIn)
 			esacpedFish = 1;
@@ -826,7 +835,15 @@ int main()
 			mermaid.spawnedBubbleCount = 0;
 			//mermaid.bubbleClock.restart();
 		}
+		if (multiple > 1) multipleTimer += deltaTime;
 
+		if (multipleTimer >= 10.f)
+		{
+			if (multiple > 1)
+				multiple--;
+
+			multipleTimer = 0.f;
+		}
 		window.clear();
 		if (mainMenuOpen)
 		{
@@ -850,6 +867,21 @@ int main()
 			if (state != GameState::Playing)
 				deltaTime = 0;
 			updateMermaid(mermaid, deltaTime);
+			if (gameWin && mermaid.spawnedBubbleCount < 10)
+			{
+				if (mermaid.bubbleClock.getElapsedTime().asSeconds() > 0.5f)
+				{
+					mermaidBubbles[mermaid.spawnedBubbleCount].spawn(
+						bubbleTextures[0],
+						window.getSize(),
+						true,
+						fish.sprite.getPosition()
+					);
+					mermaid.spawnedBubbleCount++;
+					mermaid.bubbleClock.restart();
+				}
+			}
+
 			if (spawnClock.getElapsedTime().asSeconds() >= bubbleSpawnDelay)
 			{
 				int index = rand() % 3;
@@ -1067,8 +1099,9 @@ int main()
 		if (state == GameState::NameEntry) {
 			window.setView(window.getDefaultView());
 			window.setMouseCursorVisible(true);
-			Text nameText;
+			Text nameText, escapeText;
 			nameText.setFont(font);
+			escapeText.setFont(font);
 			if (playerName.size())
 			{
 				cursorBlinkTime += deltaTime;
@@ -1090,8 +1123,16 @@ int main()
 			Vector2u windowSize = window.getSize();
 			nameText.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
 			nameText.setPosition(windowSize.x / 2.f, windowSize.y / 2.f);
+
+			escapeText.setString("Press Escape For Exit");
+			escapeText.setCharacterSize(50);
+			escapeText.setFillColor(Color::White);
+			FloatRect escapeBounds = escapeText.getLocalBounds();
+			escapeText.setOrigin(escapeBounds.left + escapeBounds.width / 2.f, escapeBounds.top + escapeBounds.height / 2.f);
+			escapeText.setPosition(windowSize.x / 2.f, windowSize.y - 100);
+
 			window.draw(nameText);
-			window.draw(exitName.sprite);
+			window.draw(escapeText);
 		}
 		if (state == GameState::levels)
 		{
@@ -1626,7 +1667,12 @@ void updateAnimation(float deltaTime)
 }
 void updateMainFishScale()
 {
-	fish.fishLevel = (int)(currentProgress / (levelMax / 3.0f)) + 2;
+	int newfishlevel = (int)(currentProgress / (levelMax / 3.0f)) + 2;
+	if (newfishlevel > fish.fishLevel) {
+		playerGrowSound.play();
+	}
+	fish.fishLevel = newfishlevel;
+
 	int level = min(2, (int)(currentProgress / (levelMax / 3.0f)));
 	fish.fishSize = 1 + (level * 0.2);
 }
@@ -1726,7 +1772,7 @@ void checkAndEatPlayerFish(Fish& otherFish)
 		{
 			if (currentProgress < levelMax)
 			{
-				currentProgress += 1200 * (1 - (currentLevel * 0.2)) * ((int)(otherFish.current_type) - 1);
+				currentProgress += 1500 * (1 - (currentLevel * 0.2)) * ((int)(otherFish.current_type) - 1);
 				score += ((int)(otherFish.current_type) - 1) * 10 * multiple;
 			}
 			if (!fish.eating)
@@ -1933,6 +1979,10 @@ void initializeSounds()
 		cout << "Failed to load gameplay\n";
 	if (!mineExplosionBuffer.loadFromFile("./assets/sounds/Other/mineExplode.wav"))
 		cout << "Failed to load mineExplode\n";
+	if (!playerGrowBuffer.loadFromFile("./assets/sounds/Other/playerGrow.wav"))
+		cout << "Failed to load playerGrow\n";
+	if (!starPickupBuffer.loadFromFile("./assets/sounds/Other/starPickup.wav"))
+		cout << "Failed to load starPickup\n";
 
 	menuSound.setBuffer(menuBuffer);
 	CurrentSound = menuSound;
@@ -1946,6 +1996,8 @@ void initializeSounds()
 	stageIntroSound.setBuffer(stageIntroBuffer);
 	gameplaySound.setBuffer(gameplayBuffer);
 	mineExplosionSound.setBuffer(mineExplosionBuffer);
+	playerGrowSound.setBuffer(playerGrowBuffer);
+	starPickupSound.setBuffer(starPickupBuffer);
 }
 
 void initMermaid(Mermaid& mermaid)
@@ -2054,6 +2106,26 @@ void checkPearlCollision(Oyster& oyster, MainFish& fish, int& score)
 			fish.eating = true;
 			fish.frame = 0;
 			fish.eatFrameTimer = 0.f;
+		}
+		if (!oyster.blackOrWhite) {
+			float stageSize = levelMax / 3.f;
+			if (currentProgress < stageSize * 1) {
+				currentProgress = stageSize * 1 + 10;
+			}
+			else if (currentProgress < stageSize * 2) {
+				currentProgress = stageSize * 2 + 10;
+			}
+			else {
+				currentProgress += (levelMax - currentProgress) / 2;
+			}
+			if (currentProgress >= levelMax) currentProgress = levelMax;
+			int newfishlevel = (int)(currentProgress / (levelMax / 3.0f)) + 2;
+			if (newfishlevel > fish.fishLevel) {
+				playerGrowSound.play();
+			}
+			fish.fishLevel = newfishlevel;
+			int level = min(2, (int)(currentProgress / (levelMax / 3.0f)));
+			fish.fishSize = 1 + (level * 0.2);
 		}
 	}
 }
