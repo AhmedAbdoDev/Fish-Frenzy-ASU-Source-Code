@@ -1,4 +1,4 @@
-﻿#include <SFML/Graphics.hpp>
+#include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
 #include <iostream>
 #include <algorithm>
@@ -152,8 +152,8 @@ struct FishCounter
 } fishscoresh[4];
 
 // alaa ashraf
-SoundBuffer menuBuffer, gameOverBuffer, bite1Buffer, bite2Buffer, bite3Buffer, mermaidBuffer, playerDieBuffer, playerSpawnBuffer, stageIntroBuffer, gameplayBuffer, mineExplosionBuffer, playerGrowBuffer, starPickupBuffer;
-Sound menuSound, gameOverSound, bite1Sound, bite2Sound, bite3Sound, mermaidSound, playerDieSound, playerSpawnSound, stageIntroSound, gameplaySound, mineExplosionSound, playerGrowSound, starPickupSound;
+SoundBuffer menuBuffer, gameOverBuffer, bite1Buffer, bite2Buffer, bite3Buffer, mermaidBuffer, playerDieBuffer, playerSpawnBuffer, stageIntroBuffer, gameplayBuffer, mineExplosionBuffer, playerGrowBuffer, starPickupBuffer, countingBuffer;
+Sound menuSound, gameOverSound, bite1Sound, bite2Sound, bite3Sound, mermaidSound, playerDieSound, playerSpawnSound, stageIntroSound, gameplaySound, mineExplosionSound, playerGrowSound, starPickupSound, countingSound;
 Sound CurrentSound;
 bool soundStopped = 0;
 void initializeSounds();
@@ -749,15 +749,12 @@ int main()
 						mermaid.isActive = true;
 						mermaid.spawnedBubbleCount = 0;
 						for (int i = 0; i < 4; i++) fishscoresh[i].finalCount = 0;
-
 						for (int i = 0; i < 10; i++)
 						{
 							mermaidBubbles[i].isActive = false;
 							mermaidBubbles[i].velocity = { 0.f, 0.f };
 							mermaidBubbles[i].fallDown = false;
 						}
-
-
 						initializeMainFish(currentLevel);
 						initializeBackground(background, currentLevel);
 						if (option.bubblepressed[0])
@@ -832,6 +829,9 @@ int main()
 			saveNewLevel(currentLevel);
 			gameWin = 0;
 			state = GameState::win;
+			countingSound.play();
+			CurrentSound.stop();
+			mermaidSound.stop();
 			mermaid.spawnedBubbleCount = 0;
 			//mermaid.bubbleClock.restart();
 		}
@@ -1983,6 +1983,8 @@ void initializeSounds()
 		cout << "Failed to load playerGrow\n";
 	if (!starPickupBuffer.loadFromFile("./assets/sounds/Other/starPickup.wav"))
 		cout << "Failed to load starPickup\n";
+	if (!countingBuffer.loadFromFile("./assets/sounds/counter.wav"))
+		cout << "Failed to load counting\n";
 
 	menuSound.setBuffer(menuBuffer);
 	CurrentSound = menuSound;
@@ -1998,6 +2000,7 @@ void initializeSounds()
 	mineExplosionSound.setBuffer(mineExplosionBuffer);
 	playerGrowSound.setBuffer(playerGrowBuffer);
 	starPickupSound.setBuffer(starPickupBuffer);
+	countingSound.setBuffer(countingBuffer);
 }
 
 void initMermaid(Mermaid& mermaid)
