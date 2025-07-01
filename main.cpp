@@ -157,8 +157,7 @@ Sound menuSound, gameOverSound, bite1Sound, bite2Sound, bite3Sound, mermaidSound
 Sound CurrentSound;
 bool soundStopped = 0;
 void initializeSounds();
-enum BubbleType
-{
+enum BubbleType {
 	Star,
 	Multiple,
 	Life
@@ -170,38 +169,53 @@ struct StarBubble
 	float speed = 150.f;
 	BubbleType type;
 	bool fallDown = false;
+	Vector2f velocity;
+	float gravity = 500.f;
 
 	void init(BubbleType bubbleType)
 	{
 		type = bubbleType;
 	}
 
-	void spawn(const Texture& texture, const Vector2u& windowSize, bool dropDown = false)
+	void spawn(const Texture& texture, const Vector2u& windowSize, bool dropDown = false, Vector2f startPos = Vector2f(0, 0))
 	{
 		sprite.setTexture(texture);
 		sprite.setTextureRect(IntRect(0, 0, type == BubbleType::Multiple ? 36 : 40, type == BubbleType::Multiple ? 36 : 40));
 		sprite.setScale(2.f, 2.f);
-		sprite.setPosition(rand() % (windowSize.x - 120), windowSize.y);
-		if (dropDown) sprite.setPosition(0, -100);
+		sprite.setPosition(startPos);
 		isActive = true;
 		fallDown = dropDown;
-		speed = 150.f;
+
+		if (fallDown)
+		{
+			velocity.x = static_cast<float>((rand() % 60) - 30);  // اتجاه أفقي عشوائي بسيط
+			velocity.y = -300.f;  // تطلع لفوق شوية
+		}
+		else
+		{
+			velocity.x = 0.f;
+			velocity.y = -speed;
+		}
 	}
 
 	void update(float deltaTime)
 	{
-		if (!isActive)
-			return;
-		float direction = fallDown ? 1.f : -1.f;
-		sprite.move(0, direction * speed * deltaTime);
+		if (!isActive) return;
 
 		if (fallDown)
 		{
-			if (sprite.getPosition().y > window.getSize().y / 1.5)
-				speed = 0;
+			velocity.y += gravity * deltaTime;  // تأثير الجاذبية
+			sprite.move(velocity * deltaTime);
+
+			if (sprite.getPosition().y > window.getSize().y / 1.5f)
+			{
+				isActive = false;
+				velocity = { 0.f, 0.f };
+			}
 		}
 		else
 		{
+			sprite.move(velocity * deltaTime);
 			if (sprite.getPosition().y < -100)
 				isActive = false;
 		}
@@ -215,12 +229,12 @@ struct StarBubble
 
 	void checkCollision(MainFish& fish, int& score, int& multiple, int& lives)
 	{
-		if (!isActive)
-			return;
+		if (!isActive) return;
 		if (sprite.getGlobalBounds().intersects(fish.sprite.getGlobalBounds()) && (!gameWin || fallDown))
 		{
 			isActive = false;
-			if (type == Star) {
+			if (type == Star)
+			{
 				score += 100;
 				fishscoresh[3].finalCount++;
 			}
@@ -228,8 +242,10 @@ struct StarBubble
 				multiple += 1;
 			else if (type == Life)
 				lives += 1;
+
 			if (option.bubblepressed[0])
 				bite1Sound.play();
+
 			if (!fish.eating)
 			{
 				fish.eating = true;
@@ -1951,7 +1967,7 @@ void initMermaid(Mermaid& mermaid)
 	mermaid.sprite.setPosition(
 		window.getSize().x,
 		window.getSize().y / 2 - (frameHeight * 2.5f) / 2);
-}
+}// فين البابل 
 void updateMermaid(Mermaid& mermaid, float deltaTime)
 {
 	if (!mermaid.isActive)
@@ -1979,9 +1995,11 @@ void updateMermaid(Mermaid& mermaid, float deltaTime)
 	if (gameWin && mermaid.spawnedBubbleCount < 10 && mermaid.bubbleClock.getElapsedTime().asSeconds() > 0.5f)
 	{
 		int i = mermaid.spawnedBubbleCount;
+		Vector2f startPos = mermaid.sprite.getPosition() + Vector2f(300.f, 20.f);
+
 		mermaidBubbles[i].init(BubbleType::Star);
-		mermaidBubbles[i].spawn(bubbleTextures[0], window.getSize(), true);
-		mermaidBubbles[i].sprite.setPosition(mermaid.sprite.getPosition().x, mermaid.sprite.getPosition().y + 20);
+		mermaidBubbles[i].spawn(bubbleTextures[0], window.getSize(), true, startPos);
+		//mermaidBubbles[i].sprite.setPosition(mermaid.sprite.getPosition().x + 300, mermaid.sprite.getPosition().y + 20);
 		mermaid.spawnedBubbleCount++;
 		mermaid.bubbleClock.restart();
 	}
