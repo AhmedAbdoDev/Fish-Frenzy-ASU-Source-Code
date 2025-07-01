@@ -1,4 +1,4 @@
-﻿#include <SFML/Graphics.hpp>
+#include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
 #include <iostream>
 #include <algorithm>
@@ -188,8 +188,8 @@ struct StarBubble
 
 		if (fallDown)
 		{
-			velocity.x = static_cast<float>((rand() % 60) - 30);  // اتجاه أفقي عشوائي بسيط
-			velocity.y = -300.f;  // تطلع لفوق شوية
+			velocity.x = static_cast<float>((rand() % 60) - 30); 
+			velocity.y = -300.f; 
 		}
 		else
 		{
@@ -204,7 +204,7 @@ struct StarBubble
 
 		if (fallDown)
 		{
-			velocity.y += gravity * deltaTime;  // تأثير الجاذبية
+			velocity.y += gravity * deltaTime;
 			sprite.move(velocity * deltaTime);
 
 			if (sprite.getPosition().y > window.getSize().y / 1.5f)
@@ -771,7 +771,6 @@ int main()
 				state = GameState::Playing;
 				mainMenuOpen = 1;
 			}
-
 			if (state == GameState::options)
 				option.update(mousePos, window, event);
 			for (int i = 0; i < 4; i++)
@@ -791,7 +790,8 @@ int main()
 					playerName += char(event.text.unicode);
 				}
 			}
-			if (event.type == Event::KeyPressed && event.key.code == Keyboard::Enter && !playerName.empty()) {
+			if (event.type == Event::KeyPressed && event.key.code == Keyboard::Enter) {
+				if (playerName.empty()) playerName = "Anonymous";
 				state = GameState::Playing;
 			}
 		}
@@ -825,8 +825,6 @@ int main()
 			state = GameState::win;
 			mermaid.spawnedBubbleCount = 0;
 			//mermaid.bubbleClock.restart();
-
-
 		}
 
 		window.clear();
@@ -1967,7 +1965,7 @@ void initMermaid(Mermaid& mermaid)
 	mermaid.sprite.setPosition(
 		window.getSize().x,
 		window.getSize().y / 2 - (frameHeight * 2.5f) / 2);
-}// فين البابل 
+}
 void updateMermaid(Mermaid& mermaid, float deltaTime)
 {
 	if (!mermaid.isActive)
@@ -1999,7 +1997,6 @@ void updateMermaid(Mermaid& mermaid, float deltaTime)
 
 		mermaidBubbles[i].init(BubbleType::Star);
 		mermaidBubbles[i].spawn(bubbleTextures[0], window.getSize(), true, startPos);
-		//mermaidBubbles[i].sprite.setPosition(mermaid.sprite.getPosition().x + 300, mermaid.sprite.getPosition().y + 20);
 		mermaid.spawnedBubbleCount++;
 		mermaid.bubbleClock.restart();
 	}
